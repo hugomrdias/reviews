@@ -39,13 +39,13 @@ export function UserMenu({ viewer, align = 'end' }: { viewer: SessionUser; align
         <DropdownMenuSeparator />
         <DropdownMenuRadioGroup value={theme} onValueChange={(v) => setTheme(v as Theme)}>
           <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Appearance</DropdownMenuLabel>
-          <DropdownMenuRadioItem value="light">
+          <DropdownMenuRadioItem value="light" closeOnClick>
             <Sun /> Light
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="dark">
+          <DropdownMenuRadioItem value="dark" closeOnClick>
             <Moon /> Dark
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="system">
+          <DropdownMenuRadioItem value="system" closeOnClick>
             <Monitor /> Match system
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>

@@ -76,7 +76,7 @@ export function CommentsSheet({ open, onOpenChange, tab, onTabChange, anchored, 
           <SheetDescription>Outdated comments point at text that has since changed or been removed.</SheetDescription>
         </SheetHeader>
         <Tabs value={tab} onValueChange={(v) => onTabChange(v as typeof tab)} className="min-h-0 flex-1 gap-0">
-          <TabsList className="mx-4 mt-3 w-[calc(100%-2rem)]">
+          <TabsList activateOnFocus className="mx-4 mt-3 w-[calc(100%-2rem)]">
             <TabsTrigger value="open">Open {groups.open.length}</TabsTrigger>
             <TabsTrigger value="outdated">Outdated {groups.outdated.length}</TabsTrigger>
             <TabsTrigger value="resolved">Resolved {groups.resolved.length}</TabsTrigger>
