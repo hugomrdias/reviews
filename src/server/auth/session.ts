@@ -37,6 +37,11 @@ export function cookieOptions(maxAge: number) {
   }
 }
 
+/** Deletion must repeat `Secure`, or the cookie library rejects the `__Host-` name. */
+function clearSessionCookie() {
+  deleteCookie(sessionCookieName(), cookieOptions(0))
+}
+
 function tokenKey() {
   return deriveKey(env.SESSION_SECRET, 'session-tokens')
 }
@@ -71,7 +76,7 @@ export async function createSession(user: SessionUser, tokens: TokenSet) {
 export async function destroySession() {
   const token = getCookie(sessionCookieName())
   if (token) await getDb().delete(sessions).where(eq(sessions.id, await sha256Hex(token)))
-  deleteCookie(sessionCookieName(), { path: '/' })
+  clearSessionCookie()
 }
 
 export async function deleteSessionById(id: string) {
@@ -145,7 +150,7 @@ export async function loadSession(): Promise<ActiveSession | null> {
   const id = await sha256Hex(token)
   const found = await readSession(id)
   if (!found) {
-    deleteCookie(sessionCookieName(), { path: '/' })
+    clearSessionCookie()
     return null
   }
   const accessToken = await freshAccessToken(found.session)

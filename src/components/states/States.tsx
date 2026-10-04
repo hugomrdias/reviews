@@ -1,7 +1,7 @@
-import { Link, useLocation } from '@tanstack/react-router'
-import { FileQuestion, FileX, Folder, FileText, LockKeyhole, Timer } from 'lucide-react'
+import { Link, useLocation, useRouter, type ErrorComponentProps } from '@tanstack/react-router'
+import { FileQuestion, FileX, Folder, FileText, LockKeyhole, Timer, TriangleAlert } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { toSplat } from '@/lib/links'
 import { basename, isMarkdown } from '@/lib/paths'
 import { cn } from '@/lib/utils'
@@ -71,6 +71,22 @@ export function PageNotFound() {
         <Link to="/" className={cn(buttonVariants({ variant: 'outline' }))}>
           Back to your repositories
         </Link>
+      </StateBlock>
+    </StatePage>
+  )
+}
+
+/** An error no route handled. The message stays out of production, where it can leak internals. */
+export function PageError({ error }: ErrorComponentProps) {
+  const router = useRouter()
+  return (
+    <StatePage>
+      <StateBlock icon={<TriangleAlert />} title="Something went wrong">
+        <p>This page hit an error. Trying again often fixes it.</p>
+        {import.meta.env.DEV && <pre className="font-mono text-sm whitespace-pre-wrap text-destructive">{error instanceof Error ? error.message : String(error)}</pre>}
+        <Button variant="outline" onClick={() => void router.invalidate()}>
+          Try again
+        </Button>
       </StateBlock>
     </StatePage>
   )

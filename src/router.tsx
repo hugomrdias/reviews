@@ -1,7 +1,7 @@
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
-import { PageNotFound } from '@/components/states/States'
+import { PageError, PageNotFound } from '@/components/states/States'
 import { routeTree } from './routeTree.gen'
 
 /** A session that died mid-visit: send the person back through sign-in. */
@@ -32,6 +32,7 @@ export function getRouter() {
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
     defaultNotFoundComponent: PageNotFound,
+    defaultErrorComponent: PageError,
   })
 
   setupRouterSsrQueryIntegration({ router, queryClient })
