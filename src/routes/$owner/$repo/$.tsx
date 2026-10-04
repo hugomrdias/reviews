@@ -32,8 +32,12 @@ export const Route = createFileRoute('/$owner/$repo/$')({
         await queryClient.ensureQueryData(fileQuery(owner, repo, sha, readme))
       }
     }
-    void queryClient.prefetchQuery(threadsQuery(owner, repo, docPath))
-    void queryClient.prefetchQuery(threadCountsQuery(owner, repo))
+    // Awaited so the server renders the same comment counts the client
+    // hydrates with (a streamed prefetch could land after the HTML).
+    await Promise.all([
+      queryClient.ensureQueryData(threadsQuery(owner, repo, docPath)),
+      queryClient.ensureQueryData(threadCountsQuery(owner, repo)),
+    ])
     return { preloadedTree: preloadTree(tree.paths, path) }
   },
   head: ({ params }) => {
