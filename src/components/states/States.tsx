@@ -24,9 +24,7 @@ export function AppNotInstalled({ owner, installUrl }: { owner: string; installU
         Reviews can only read repositories where its GitHub App is installed. Install it on {owner} and choose
         this repository. If you're not an admin there, GitHub will send your request to one.
       </p>
-      <Button asChild>
-        <a href={href}>Install on {owner}</a>
-      </Button>
+      <Button nativeButton={false} render={<a href={href} />}>Install on {owner}</Button>
     </StateBlock>
   )
 }
@@ -38,10 +36,12 @@ export function RepoNotSelected({ owner, settingsUrl }: { owner: string; setting
         The app is installed on {owner}, but this repository isn't in its list, or your account can't read it.
         An admin of {owner} can add it in the installation settings.
       </p>
-      <Button asChild variant="outline">
-        <a href={settingsUrl} target="_blank" rel="noreferrer">
-          Open installation settings
-        </a>
+      <Button
+        variant="outline"
+        nativeButton={false}
+        render={<a href={settingsUrl} target="_blank" rel="noreferrer" />}
+      >
+        Open installation settings
       </Button>
     </StateBlock>
   )
@@ -51,9 +51,7 @@ export function RepoNotFound() {
   return (
     <StateBlock icon={<FileQuestion />} title="Repository or branch not found">
       <p>Check the address. If the repository is private, make sure your GitHub account can open it.</p>
-      <Button asChild variant="outline">
-        <Link to="/">Back to your repositories</Link>
-      </Button>
+      <Button variant="outline" nativeButton={false} render={<Link to="/" />}>Back to your repositories</Button>
     </StateBlock>
   )
 }
@@ -95,9 +93,7 @@ export function UnviewableFile({
     <StateBlock icon={<FileX />} title={basename(path)}>
       <p>{reason}</p>
       {kind !== 'lfs' && (
-        <Button asChild variant="outline">
-          <a href={rawHref}>Download the file</a>
-        </Button>
+        <Button variant="outline" nativeButton={false} render={<a href={rawHref} />}>Download the file</Button>
       )}
     </StateBlock>
   )

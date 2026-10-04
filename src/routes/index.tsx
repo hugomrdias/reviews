@@ -103,10 +103,8 @@ function Welcome({ signin, returnTo }: { signin?: 'failed' | 'expired' | 'cancel
             </Alert>
           ) : null}
           <div className="flex flex-col items-start gap-3">
-            <Button asChild size="lg">
-              <a href={loginHref}>
-                <GitHubMark /> {signin === 'cancelled' ? 'Try again' : 'Sign in with GitHub'}
-              </a>
+            <Button size="lg" nativeButton={false} render={<a href={loginHref} />}>
+              <GitHubMark /> {signin === 'cancelled' ? 'Try again' : 'Sign in with GitHub'}
             </Button>
             <p className="text-sm text-muted-foreground">
               People see a repository, and its comments, only if their GitHub account can read it.
@@ -159,8 +157,8 @@ function Repositories({ viewer }: { viewer: SessionUser }) {
                   Install the Reviews GitHub App on your account or an organization, and choose which repositories
                   to share. You can still open any public repository by pasting its link above.
                 </p>
-                <Button asChild className="mt-4">
-                  <a href="/github/install">Install the GitHub App</a>
+                <Button className="mt-4" nativeButton={false} render={<a href="/github/install" />}>
+                  Install the GitHub App
                 </Button>
               </div>
             )}
