@@ -63,19 +63,21 @@ function Comment({
         {comment.editedAt && <span className="text-muted-foreground">edited</span>}
         {own && !comment.deleted && !editing && (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="ml-auto size-6 opacity-0 group-hover/comment:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
-                aria-label="Comment actions"
-              >
-                <MoreHorizontal />
-              </Button>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="ml-auto size-6 opacity-0 group-hover/comment:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100"
+                  aria-label="Comment actions"
+                />
+              }
+            >
+              <MoreHorizontal />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setEditing(true)}>Edit</DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onSelect={() => mutations.remove.mutate(comment.id)}>
+              <DropdownMenuItem onClick={() => setEditing(true)}>Edit</DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={() => mutations.remove.mutate(comment.id)}>
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -244,38 +246,42 @@ function ThreadMenu({
       <Tooltip>
         <TooltipTrigger
           render={
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="ml-auto size-8" aria-label="Thread actions">
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
+            <DropdownMenuTrigger
+              render={<Button variant="ghost" size="icon" className="ml-auto size-8" aria-label="Thread actions" />}
+            />
           }
-        />
+        >
+          <MoreHorizontal />
+        </TooltipTrigger>
         <TooltipContent>Thread actions</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" className="w-60">
-        <DropdownMenuItem onSelect={onCopyLink}>
+        <DropdownMenuItem onClick={onCopyLink}>
           <Copy /> Copy link to thread
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link
-            to="/$owner/$repo/$"
-            params={{ owner: location.owner, repo: location.repo, _splat: toSplat(thread.commitSha, location.path) }}
-            search={{ from: location.ref, thread: thread.id }}
-          >
-            <History /> View the file at {sha}
-          </Link>
-        </DropdownMenuItem>
-        {state !== 'attached' && (
-          <DropdownMenuItem asChild>
+        <DropdownMenuItem
+          render={
             <Link
               to="/$owner/$repo/$"
-              params={{ owner: location.owner, repo: location.repo, _splat: toSplat(location.ref, location.path) }}
-              search={{ view: 'compare', base: thread.commitSha, thread: thread.id }}
-            >
-              <GitCompareArrows /> See what changed since {sha}
-            </Link>
+              params={{ owner: location.owner, repo: location.repo, _splat: toSplat(thread.commitSha, location.path) }}
+              search={{ from: location.ref, thread: thread.id }}
+            />
+          }
+        >
+          <History /> View the file at {sha}
+        </DropdownMenuItem>
+        {state !== 'attached' && (
+          <DropdownMenuItem
+            render={
+              <Link
+                to="/$owner/$repo/$"
+                params={{ owner: location.owner, repo: location.repo, _splat: toSplat(location.ref, location.path) }}
+                search={{ view: 'compare', base: thread.commitSha, thread: thread.id }}
+              />
+            }
+          >
+            <GitCompareArrows /> See what changed since {sha}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
