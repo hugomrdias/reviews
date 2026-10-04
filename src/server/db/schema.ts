@@ -76,6 +76,8 @@ export const comments = sqliteTable(
       .notNull()
       .references(() => users.id),
     body: text('body').notNull(),
+    // The agent that posted this for the author, such as "Claude Code". Null when posted in the app.
+    via: text('via'),
     createdAt: integer('created_at').notNull(),
     editedAt: integer('edited_at'),
     // Soft delete: a thread is never lost because its comments were removed.

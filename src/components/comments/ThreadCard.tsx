@@ -1,8 +1,9 @@
 import { Link } from '@tanstack/react-router'
-import { Check, Copy, GitCompareArrows, History, MoreHorizontal, RotateCcw } from 'lucide-react'
+import { Bot, Check, Copy, GitCompareArrows, History, MoreHorizontal, RotateCcw } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -58,6 +59,13 @@ function Comment({
       <div className="flex items-center gap-2 text-xs">
         <AuthorAvatar author={comment.author} />
         <span className="font-semibold text-foreground">{comment.author.login}</span>
+        {comment.via && (
+          <Badge variant="secondary" className="max-w-32" title={`Posted by ${comment.via} for ${comment.author.login}`}>
+            <Bot data-icon="inline-start" />
+            <span className="sr-only">via</span>
+            <span className="truncate">{comment.via}</span>
+          </Badge>
+        )}
         <time className="text-muted-foreground" dateTime={new Date(comment.createdAt).toISOString()} title={absoluteTime(comment.createdAt)}>
           {relativeTime(comment.createdAt)}
         </time>

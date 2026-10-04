@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import type { FileTreePreloadedData } from '@pierre/trees/react'
 import { History } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { CommitPicker } from '@/components/code/CommitPicker'
 import { CompareView } from '@/components/code/CompareView'
 import { SourceView } from '@/components/code/SourceView'
@@ -38,6 +39,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useThreadMutations } from '@/hooks/useThreadMutations'
 import type { TextIndex } from '@/lib/anchoring/text-index'
 import { offsetsToRange } from '@/lib/anchoring/text-index'
+import { threadsForAgent } from '@/lib/agent-prompt'
 import { toSplat } from '@/lib/links'
 import { findReadme, isMarkdown } from '@/lib/paths'
 import {
@@ -202,6 +204,29 @@ function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, sear
     },
     [draft, text, mutations.create, sha],
   )
+
+  const copyForAgent = () => {
+    if (!text) return
+    const prompt = threadsForAgent({
+      repo: `${owner}/${repo}`,
+      ref: refName,
+      sha,
+      path: docPath,
+      source: text.text,
+      blobSha: text.blobSha,
+      threads: anchored,
+      threadUrl: (id) => {
+        const url = new URL(window.location.href)
+        url.searchParams.set('thread', id)
+        url.hash = ''
+        return url.toString()
+      },
+    })
+    navigator.clipboard.writeText(prompt).then(
+      () => toast.success('Copied the open comments for your agent'),
+      () => toast.error('Could not copy to the clipboard'),
+    )
+  }
 
   const onIndex = useCallback((next: TextIndex) => setIndexed({ key: docKey, index: next }), [docKey])
   const onDraft = useCallback((next: AnchorData | null) => {
@@ -388,6 +413,7 @@ function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, sear
           setSheetOpen(false)
           setReveal(id)
         }}
+        onCopyForAgent={copyForAgent}
       />
 
       <Drawer

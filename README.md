@@ -6,6 +6,7 @@ Read the markdown in a GitHub repository the way GitHub renders it, select any p
 - **Links stay in the app.** Relative links between files open here, not on github.com. Images in private repositories load through the app.
 - **Comments survive edits.** Each comment remembers the quoted text and its surroundings. When the file changes, the comment follows the text. If the text was reworded, the comment is marked as edited. If the text was removed, the comment is marked as outdated, and you can still open the file as it was or see what changed.
 - **Three views per file.** *Page* shows rendered markdown with notes in the margin. *Source* shows the raw file, where you comment on lines. *Changes* shows a diff between two commits, with comments on both sides.
+- **Hand comments to an agent.** *Copy for agent* in a file's comments copies its open threads as one prompt: the file and line of each, the quoted text and the comments. Paste it into a coding agent to address them.
 
 Built with TanStack Start, React, [@pierre/trees](https://trees.software) for the file tree, [@pierre/diffs](https://diffs.com) for code, source and diffs, and shadcn/ui. It runs on Cloudflare Workers, with comments stored in D1.
 

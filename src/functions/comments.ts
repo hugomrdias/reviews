@@ -62,6 +62,7 @@ export const createThread = createServerFn({ method: 'POST' })
       blobSha: data.blobSha,
       anchor: data.anchor,
       body: data.body,
+      via: null,
     })
     return { id }
   })
@@ -71,7 +72,7 @@ export const addComment = createServerFn({ method: 'POST' })
   .validator(repoInput.extend({ threadId: z.uuid(), body: bodySchema }))
   .handler(async ({ data, context: { session } }) => {
     const access = await commentableRepo(session, data.owner, data.repo)
-    const id = await store.addComment(getDb(), session.user.id, access.repoId, data.threadId, data.body)
+    const id = await store.addComment(getDb(), session.user.id, access.repoId, data.threadId, data.body, null)
     return { id }
   })
 
