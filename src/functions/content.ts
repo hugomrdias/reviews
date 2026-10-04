@@ -10,7 +10,7 @@ import {
   type NoAccess,
 } from '@/server/github/access'
 import { NotFoundError, RateLimitError } from '@/server/github/client'
-import { getFileCommits, getFileContent, getTree, type FileContent } from '@/server/github/content'
+import { getBlobText, getFileCommits, getFileContent, getTree, type FileContent } from '@/server/github/content'
 import { resolveLocation as resolve, type Location } from '@/server/github/refs'
 import { repoActivity } from '@/server/comments/store'
 import { getDb } from '@/server/db/client'
@@ -104,6 +104,23 @@ export const fetchFile = createServerFn({ method: 'GET' })
     const paths = tree.entries.map((e) => e.path)
     if (isDirectory(data.path, paths)) return { kind: 'directory', path: data.path }
     return { kind: 'missing', path: data.path }
+  })
+
+/**
+ * A text blob by its SHA, or null when it isn't text or GitHub doesn't have
+ * it. Cheaper than fetchFile when the blob is already known: no tree lookup.
+ */
+export const fetchBlobText = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .validator(repoInput.extend({ blobSha: shaSchema }))
+  .handler(async ({ data, context: { session } }) => {
+    const access = await requireRepoAccess(session, data.owner, data.repo)
+    try {
+      return await getBlobText(session.accessToken, access.repoId, access.owner, access.name, data.blobSha)
+    } catch (error) {
+      if (error instanceof NotFoundError) return null
+      throw error
+    }
   })
 
 export const fetchFileCommits = createServerFn({ method: 'GET' })

@@ -1,9 +1,9 @@
 import { useQueries } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
-import { anchorLines } from '@/lib/anchoring/line-anchor'
+import { anchorLines, needsOldSource } from '@/lib/anchoring/line-anchor'
 import { anchorText, type AnchorState } from '@/lib/anchoring/text-anchor'
 import type { FileResult } from '@/functions/content'
-import { fileQuery } from '@/lib/queries'
+import { blobTextQuery, fileQuery } from '@/lib/queries'
 import type { ThreadView } from '@/lib/threads'
 
 export type PlacedState = AnchorState | 'unplaced'
@@ -31,33 +31,49 @@ interface Options {
   renderedText: string | null
 }
 
+/** How to fetch the version a thread was written on: by its blob, or through the commit's tree for older threads without one. */
+type OldSource = { key: string; blobSha: string } | { key: string; commitSha: string }
+
+function oldSourceOf(thread: ThreadView): OldSource {
+  return thread.blobSha
+    ? { key: `blob:${thread.blobSha}`, blobSha: thread.blobSha }
+    : { key: `commit:${thread.commitSha}`, commitSha: thread.commitSha }
+}
+
 /**
  * Places every thread on the current version of the file: attached where
  * its text still is, edited when the text changed a little, outdated when
- * it's gone. Line comments on older versions diff against the old source,
- * fetched once per commit (immutable, so cached forever).
+ * it's gone. Line comments on older versions whose lines aren't found whole
+ * diff against the old source, fetched by blob SHA (immutable, so cached
+ * forever).
  */
 export function useAnchoredThreads({ owner, repo, path, threads, blobSha, source, renderedText }: Options) {
-  const oldCommits = useMemo(
-    () => [
-      ...new Set(
-        threads.filter((t) => t.anchor.kind === 'lines' && t.blobSha !== blobSha).map((t) => t.commitSha),
-      ),
-    ],
-    [threads, blobSha],
-  )
+  const oldVersions = useMemo(() => {
+    // Callers pass an empty blob SHA while the file loads: nothing to place on yet.
+    if (!blobSha) return []
+    const byKey = new Map<string, OldSource>()
+    for (const thread of threads) {
+      if (!needsOldSource(source, thread.anchor, thread.blobSha === blobSha)) continue
+      const old = oldSourceOf(thread)
+      byKey.set(old.key, old)
+    }
+    return [...byKey.values()]
+  }, [threads, blobSha, source])
   const combine = useCallback(
-    (results: Array<{ data?: FileResult }>) => {
+    (results: Array<{ data?: FileResult | string | null }>) => {
       const map = new Map<string, string>()
-      results.forEach((result, i) => {
-        if (result.data?.kind === 'text') map.set(oldCommits[i], result.data.text)
+      results.forEach(({ data }, i) => {
+        if (typeof data === 'string') map.set(oldVersions[i].key, data)
+        else if (data?.kind === 'text') map.set(oldVersions[i].key, data.text)
       })
       return map
     },
-    [oldCommits],
+    [oldVersions],
   )
   const oldSources = useQueries({
-    queries: oldCommits.map((sha) => fileQuery(owner, repo, sha, path)),
+    queries: oldVersions.map((old) =>
+      'blobSha' in old ? blobTextQuery(owner, repo, old.blobSha) : fileQuery(owner, repo, old.commitSha, path),
+    ),
     combine,
   })
 
@@ -67,7 +83,7 @@ export function useAnchoredThreads({ owner, repo, path, threads, blobSha, source
         const sameBlob = thread.blobSha === blobSha
         const { anchor } = thread
         if (anchor.kind === 'lines') {
-          const result = anchorLines(source, anchor, sameBlob, oldSources.get(thread.commitSha))
+          const result = anchorLines(source, anchor, sameBlob, oldSources.get(oldSourceOf(thread).key))
           return result.state === 'outdated'
             ? { thread, state: 'outdated' }
             : { thread, state: result.state, lines: { start: result.lineStart, end: result.lineEnd } }

@@ -4,6 +4,7 @@ import { FileViewer } from '@/components/viewer/FileViewer'
 import * as f from '@/dev/fixtures'
 import { toSplat } from '@/lib/links'
 import {
+  blobTextQuery,
   connectedAgentsQuery,
   fileCommitsQuery,
   fileQuery,
@@ -52,6 +53,7 @@ export const Route = createFileRoute('/dev/preview')({
       size: f.oldReleaseProcess.length,
       text: f.oldReleaseProcess,
     })
+    seed(blobTextQuery(f.OWNER, f.REPO, f.OLD_BLOB), f.oldReleaseProcess)
     seed(fileCommitsQuery(f.OWNER, f.REPO, f.SHA, f.DOC), f.commits)
     seed(threadsQuery(f.OWNER, f.REPO, f.DOC), f.threads)
     seed(threadCountsQuery(f.OWNER, f.REPO), { [f.DOC]: 4, 'docs/on-call.md': 2 })

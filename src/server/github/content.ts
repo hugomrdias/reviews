@@ -68,15 +68,32 @@ export function getFileContent(
   if (isImage(entry.path)) return Promise.resolve<FileContent>({ kind: 'image', ...meta })
   if (entry.size > MAX_TEXT_BYTES) return Promise.resolve<FileContent>({ kind: 'too-large', ...meta })
 
-  // Keyed by blob alone; the path is added back, since the same blob can sit at many paths.
-  type BlobContent = { kind: 'binary' | 'lfs' } | { kind: 'text'; text: string }
-  return cached<BlobContent>(`blob-content:${repoId}:${entry.sha}`, IMMUTABLE_TTL, async () => {
-    const bytes = new Uint8Array(await (await fetchBlob(token, owner, repo, entry.sha)).arrayBuffer())
+  // The path is added back, since the same blob can sit at many paths.
+  return blobContent(token, repoId, owner, repo, entry.sha).then((content): FileContent => ({ ...content, ...meta }))
+}
+
+type BlobContent = { kind: 'binary' | 'lfs' | 'too-large' } | { kind: 'text'; text: string }
+
+/** A blob's content, keyed by blob alone. */
+function blobContent(token: string, repoId: number, owner: string, repo: string, blobSha: string) {
+  return cached<BlobContent>(`blob-content:${repoId}:${blobSha}`, IMMUTABLE_TTL, async () => {
+    const bytes = new Uint8Array(await (await fetchBlob(token, owner, repo, blobSha)).arrayBuffer())
+    // Only reached without a tree entry to check the size first.
+    if (bytes.length > MAX_TEXT_BYTES) return { kind: 'too-large' }
     if (looksBinary(bytes)) return { kind: 'binary' }
     const text = new TextDecoder().decode(bytes)
     if (text.startsWith('version https://git-lfs.github.com/spec/v1')) return { kind: 'lfs' }
     return { kind: 'text', text }
-  }).then((content): FileContent => ({ ...content, ...meta }))
+  })
+}
+
+/**
+ * A text blob by its SHA, or null when it isn't text. No tree lookup, for
+ * callers that already know the blob, such as a comment on an older version.
+ */
+export async function getBlobText(token: string, repoId: number, owner: string, repo: string, blobSha: string) {
+  const content = await blobContent(token, repoId, owner, repo, blobSha)
+  return content.kind === 'text' ? content.text : null
 }
 
 export function fetchBlob(token: string, owner: string, repo: string, blobSha: string) {

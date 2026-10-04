@@ -25,6 +25,7 @@ const github: RepoReader = {
   access: async () => repo,
   resolveRef: async (_, ref) => ({ ref, sha: 'b'.repeat(40) }),
   file: async () => null,
+  blob: async () => null,
   commit: async () => null,
 }
 
