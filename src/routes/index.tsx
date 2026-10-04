@@ -63,6 +63,17 @@ function Specimen() {
   )
 }
 
+function Credit({ className }: { className?: string }) {
+  return (
+    <footer className={cn('text-sm text-muted-foreground', className)}>
+      Made by{' '}
+      <a href="https://hugodias.me" rel="author" className="text-link hover:underline">
+        Hugo Dias
+      </a>
+    </footer>
+  )
+}
+
 const SIGNIN_MESSAGES = {
   expired: 'That sign-in link expired. Sign in again.',
   failed: "GitHub didn't complete the sign-in. Try again.",
@@ -71,13 +82,13 @@ const SIGNIN_MESSAGES = {
 function Welcome({ signin, returnTo }: { signin?: 'failed' | 'expired' | 'cancelled'; returnTo?: string }) {
   const loginHref = returnTo ? `/auth/login?returnTo=${encodeURIComponent(returnTo)}` : '/auth/login'
   return (
-    <main className="mx-auto flex min-h-dvh max-w-6xl flex-col px-6 py-10 md:py-16">
+    <div className="mx-auto flex min-h-dvh max-w-6xl flex-col px-6 py-10 md:py-16">
       <p className="flex items-center gap-2 text-sm font-semibold">
         <span className="inline-block h-3 w-5 rounded-[2px] bg-marker-strong" aria-hidden />
         Reviews
       </p>
 
-      <div className="grid flex-1 items-center gap-14 py-14 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-24">
+      <main className="grid flex-1 items-center gap-14 py-14 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-24">
         <div className="flex flex-col gap-6">
           <h1 className="font-serif text-4xl leading-[1.1] font-semibold tracking-tight text-balance md:text-5xl">
             Comment on the docs in your repos
@@ -119,8 +130,9 @@ function Welcome({ signin, returnTo }: { signin?: 'failed' | 'expired' | 'cancel
           </div>
         </div>
         <Specimen />
-      </div>
-    </main>
+      </main>
+      <Credit />
+    </div>
   )
 }
 
@@ -128,7 +140,7 @@ function Repositories({ viewer }: { viewer: SessionUser }) {
   const { data: repos, isLoading, isError } = useQuery(reposQuery())
 
   return (
-    <div className="min-h-dvh">
+    <div className="flex min-h-dvh flex-col">
       <header className="flex items-center justify-between border-b px-4 py-2 md:px-8">
         <p className="flex items-center gap-2 text-sm font-semibold">
           <span className="inline-block h-3 w-5 rounded-[2px] bg-marker-strong" aria-hidden />
@@ -137,7 +149,7 @@ function Repositories({ viewer }: { viewer: SessionUser }) {
         <UserMenu viewer={viewer} />
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 pt-12 pb-24 md:px-8">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-12 pb-24 md:px-8">
         <div className="mb-5 flex items-baseline justify-between gap-4">
           <h1 className="font-serif text-3xl font-semibold tracking-tight">Open a repository</h1>
           <a href="/github/install" className="shrink-0 text-sm text-link hover:underline">
@@ -172,6 +184,7 @@ function Repositories({ viewer }: { viewer: SessionUser }) {
           </div>
         )}
       </main>
+      <Credit className="mx-auto w-full max-w-3xl px-4 pb-8 md:px-8" />
     </div>
   )
 }
