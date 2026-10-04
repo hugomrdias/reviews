@@ -17,7 +17,7 @@ function diffsClientOnly(): Plugin {
     name: 'diffs-client-only',
     enforce: 'pre',
     resolveId(id) {
-      if (this.environment.name === 'ssr' && (id === '@pierre/diffs/react' || id === '@pierre/diffs')) {
+      if (this.environment.name === 'ssr' && (id === '@pierre/diffs/react' || id === '@pierre/diffs' || id === 'shiki')) {
         return diffsStub
       }
     },
@@ -77,7 +77,7 @@ export default defineConfig({
   resolve: { tsconfigPaths: true },
   optimizeDeps: {
     // Highlighting is stubbed out of the Worker, so only the browser bundles it.
-    include: [...sharedDeps, '@pierre/diffs', '@pierre/diffs/react', 'react-dom/client'],
+    include: [...sharedDeps, '@pierre/diffs', '@pierre/diffs/react', 'shiki', 'react-dom/client'],
   },
   environments: {
     ssr: {

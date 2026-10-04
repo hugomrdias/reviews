@@ -1,3 +1,4 @@
+import { bundledLanguages } from 'shiki'
 import { useMemo } from 'react'
 import { useTheme } from '@/lib/theme'
 
@@ -31,13 +32,16 @@ const LANG_ALIASES: Record<string, string> = {
   rb: 'ruby',
   rs: 'rust',
   md: 'markdown',
-  text: 'plaintext',
-  txt: 'plaintext',
-  plain: 'plaintext',
 }
 
+/**
+ * The Diffs language for a fence name. Anything Shiki doesn't bundle
+ * (plain text, unknown names, typos) renders as 'text', which Diffs
+ * shows unhighlighted instead of throwing.
+ */
 export function normalizeLang(lang: string | undefined) {
-  if (!lang) return 'plaintext'
+  if (!lang) return 'text'
   const lower = lang.toLowerCase()
-  return LANG_ALIASES[lower] ?? lower
+  const name = LANG_ALIASES[lower] ?? lower
+  return Object.hasOwn(bundledLanguages, name) ? name : 'text'
 }
