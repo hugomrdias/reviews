@@ -57,6 +57,20 @@ export function RepoNotFound() {
   )
 }
 
+/** Any address that matches no page. */
+export function PageNotFound() {
+  return (
+    <main className="px-6">
+      <StateBlock icon={<FileQuestion />} title="There's no page here">
+        <p>Check the address, or open a repository from your list.</p>
+        <Link to="/" className={cn(buttonVariants({ variant: 'outline' }))}>
+          Back to your repositories
+        </Link>
+      </StateBlock>
+    </main>
+  )
+}
+
 export function RateLimited({ resetAt }: { resetAt: number }) {
   const minutes = Math.max(1, Math.ceil((resetAt - Date.now()) / 60_000))
   return (
