@@ -6,7 +6,7 @@ Read the markdown in a GitHub repository the way GitHub renders it, select any p
 - **Links stay in the app.** Relative links between files open here, not on github.com. Images in private repositories load through the app.
 - **Comments survive edits.** Each comment remembers the quoted text and its surroundings. When the file changes, the comment follows the text. If the text was reworded, the comment is marked as edited. If the text was removed, the comment is marked as outdated, and you can still open the file as it was or see what changed.
 - **Three views per file.** *Page* shows rendered markdown with notes in the margin. *Source* shows the raw file, where you comment on lines. *Changes* shows a diff between two commits, with comments on both sides.
-- **Hand comments to an agent.** *Copy for agent* in a file's comments copies its open threads as one prompt: the file and line of each, the quoted text and the comments. Paste it into a coding agent to address them.
+- **Agents work through comments.** Connect a coding agent over MCP and it can read the threads on a repository, reply, and mark each one *addressed* once it has committed a fix. A person then confirms it or reopens it; agents can't resolve threads. Their comments carry the agent's name. Without MCP, *Copy for agent* in a file's comments copies its open threads as one prompt to paste instead. See [Connect an agent](#connect-an-agent).
 
 Built with TanStack Start, React, [@pierre/trees](https://trees.software) for the file tree, [@pierre/diffs](https://diffs.com) for code, source and diffs, and shadcn/ui. It runs on Cloudflare Workers, with comments stored in D1.
 
@@ -14,7 +14,7 @@ Built with TanStack Start, React, [@pierre/trees](https://trees.software) for th
 
 Requirements: pnpm 12. It installs the pinned Node 24 for the project's scripts (`devEngines` in `package.json`).
 
-1. Register a GitHub App for development (see [GitHub App](#github-app)), using `http://localhost:3000/auth/callback` as the callback URL.
+1. Register a GitHub App for development (see [GitHub App](#github-app)), with `http://localhost:3000/auth/callback` and `http://localhost:3000/oauth/callback` as callback URLs.
 2. Copy `.dev.vars.example` to `.dev.vars`. Fill in the app's client ID, slug and client secret, and a session secret (`openssl rand -base64 32`). The vars in `wrangler.jsonc` are production values; `.dev.vars` overrides them locally.
 3. Install, create the local database, and start:
 
@@ -28,13 +28,25 @@ Open http://localhost:3000.
 
 To work on the viewer without signing in, open http://localhost:3000/dev/preview. It shows a fixture document with comments in every state. The route only exists in development.
 
+## Connect an agent
+
+Reviews is an MCP server at `/mcp`. In Claude Code, from the repository you're working on:
+
+```bash
+claude mcp add --transport http reviews https://reviews.hugodias.me/mcp
+```
+
+The first time the agent uses it, a browser opens: you approve the connection in Reviews, then GitHub signs you in. The agent then acts as you, with your GitHub access. It has four tools: `list_threads` and `get_thread` show threads placed on a commit, with their current lines; `reply` comments on a thread; `mark_addressed` replies and marks a thread addressed, with the commit that fixed it. The `address_comments` prompt (`/mcp__reviews__address_comments` in Claude Code) lists a repository's open threads with the working rules.
+
+See and disconnect agents from your menu, under **Connected agents**. The design is in `docs/design/mcp-server.md`.
+
 ## GitHub App
 
 Create the app at **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**. Use one app for development and another for production, so the production secret never sits on a laptop.
 
 | Setting | Value |
 |---|---|
-| Callback URL | `https://<your domain>/auth/callback` |
+| Callback URLs | `https://<your domain>/auth/callback` (signing in) and `https://<your domain>/oauth/callback` (connecting agents) |
 | Expire user authorization tokens | On |
 | Request user authorization (OAuth) during installation | Off |
 | Setup URL | `https://<your domain>/github/installed` |
@@ -79,8 +91,18 @@ The Workers Paid plan is recommended: rendering large documents can exceed the f
    pnpm exec wrangler d1 create github-reviews-preview
    ```
 
-2. In `wrangler.jsonc`, set `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_SLUG` under `vars` to the production GitHub App.
-3. Set the production secrets, from the production GitHub App:
+2. Create the KV namespaces that hold agent connections. Put the production `id` in `kv_namespaces` in `wrangler.jsonc`, and the preview one in `previews.kv_namespaces`:
+
+   ```bash
+   pnpm exec wrangler kv namespace create OAUTH_KV
+   ```
+
+   ```bash
+   pnpm exec wrangler kv namespace create OAUTH_KV_PREVIEW
+   ```
+
+3. In `wrangler.jsonc`, set `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_SLUG` under `vars` to the production GitHub App.
+4. Set the production secrets, from the production GitHub App:
 
    ```bash
    pnpm exec wrangler secret put GITHUB_APP_CLIENT_SECRET
@@ -90,7 +112,7 @@ The Workers Paid plan is recommended: rendering large documents can exceed the f
    pnpm exec wrangler secret put SESSION_SECRET
    ```
 
-4. Set the Preview secrets, from the dev GitHub App. Each new Preview copies them when it's created:
+5. Set the Preview secrets, from the dev GitHub App. Each new Preview copies them when it's created:
 
    ```bash
    pnpm exec wrangler preview base-config secret put GITHUB_APP_CLIENT_SECRET
@@ -100,7 +122,7 @@ The Workers Paid plan is recommended: rendering large documents can exceed the f
    pnpm exec wrangler preview base-config secret put SESSION_SECRET
    ```
 
-5. Create a Cloudflare API token from the **Edit Cloudflare Workers** template, and add **Account → D1 → Edit**. Scope the zone resources to `hugodias.me`. Add it and your account ID to the repository's Actions secrets:
+6. Create a Cloudflare API token from the **Edit Cloudflare Workers** template, and add **Account → D1 → Edit**. Scope the zone resources to `hugodias.me`. Add it and your account ID to the repository's Actions secrets:
 
    ```bash
    gh secret set CLOUDFLARE_API_TOKEN
@@ -112,10 +134,11 @@ The Workers Paid plan is recommended: rendering large documents can exceed the f
 
 ### Signing in on a Preview
 
-Previews sign in with the dev GitHub App. Add a second callback URL to it, next to the localhost one, and turn on **Allow wildcard matching** for that URL only:
+Previews sign in with the dev GitHub App. Add these callback URLs to it, next to the localhost ones, and turn on **Allow wildcard matching** for them only:
 
 ```
 https://hugomrdias.workers.dev/auth/callback
+https://hugomrdias.workers.dev/oauth/callback
 ```
 
 With wildcard matching, GitHub accepts any subdomain of the callback URL's host, so this one URL covers every Preview, such as `https://pr-3-github-reviews.hugomrdias.workers.dev/auth/callback`. It also lets any other Worker on the `hugomrdias.workers.dev` subdomain receive the dev app's authorization codes. That's acceptable for the dev app, but keep wildcard matching off on the production app.
@@ -144,7 +167,8 @@ All Previews share one database, so a pull request's migrations reach it before 
 - `src/routes/$owner/$repo/$.tsx` is the viewer. The URL keeps the branch name, but every read is pinned to the commit it resolves to, so cached data never goes stale.
 - `src/server/` runs only on the Worker. It holds GitHub access checks, sessions (tokens encrypted in D1, with refresh handled safely when requests race), file reads and the comment store.
 - `src/functions/` holds the server functions the UI calls. Every one checks that the signed-in user can read the repository.
-- `src/lib/anchoring/` places comments on the current version of a file. Text comments are matched by quote and context. Line comments are followed through a line diff.
+- `src/lib/anchoring/` places comments on the current version of a file. Text comments are matched by quote and context. Line comments are followed through a line diff. It runs in the browser and on the Worker: `src/lib/markdown/page-text.ts` gives the Worker the rendered page's text by running the page's own markdown pipeline.
+- `src/server.ts` is the Worker's entry. It sends `/mcp` and the OAuth endpoints to `src/server/agents/` and everything else to TanStack Start. Agents get their own GitHub tokens, stored encrypted with their grant in KV.
 - Code highlighting runs only in the browser. The Worker never bundles Shiki.
 
 Dependency versions are pinned exactly. TanStack Start is a release candidate and @pierre/trees is in beta, so upgrade them deliberately.

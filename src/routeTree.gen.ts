@@ -17,6 +17,8 @@ import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as DevPreviewRouteImport } from './routes/dev/preview'
 import { Route as GithubInstallRouteImport } from './routes/github/install'
 import { Route as GithubInstalledRouteImport } from './routes/github/installed'
+import { Route as OauthAuthorizeRouteImport } from './routes/oauth/authorize'
+import { Route as OauthCallbackRouteImport } from './routes/oauth/callback'
 import { Route as OwnerRepoSplatRouteImport } from './routes/$owner/$repo/$'
 import { Route as ApiRawOwnerRepoShaSplatRouteImport } from './routes/api/raw/$owner/$repo/$sha/$'
 
@@ -60,6 +62,16 @@ const GithubInstalledRoute = GithubInstalledRouteImport.update({
   path: '/github/installed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OauthAuthorizeRoute = OauthAuthorizeRouteImport.update({
+  id: '/oauth/authorize',
+  path: '/oauth/authorize',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OauthCallbackRoute = OauthCallbackRouteImport.update({
+  id: '/oauth/callback',
+  path: '/oauth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OwnerRepoSplatRoute = OwnerRepoSplatRouteImport.update({
   id: '/$owner/$repo/$',
   path: '/$owner/$repo/$',
@@ -80,6 +92,8 @@ export interface FileRoutesByFullPath {
   '/dev/preview': typeof DevPreviewRoute
   '/github/install': typeof GithubInstallRoute
   '/github/installed': typeof GithubInstalledRoute
+  '/oauth/authorize': typeof OauthAuthorizeRoute
+  '/oauth/callback': typeof OauthCallbackRoute
   '/$owner/$repo/$': typeof OwnerRepoSplatRoute
   '/api/raw/$owner/$repo/$sha/$': typeof ApiRawOwnerRepoShaSplatRoute
 }
@@ -92,6 +106,8 @@ export interface FileRoutesByTo {
   '/dev/preview': typeof DevPreviewRoute
   '/github/install': typeof GithubInstallRoute
   '/github/installed': typeof GithubInstalledRoute
+  '/oauth/authorize': typeof OauthAuthorizeRoute
+  '/oauth/callback': typeof OauthCallbackRoute
   '/$owner/$repo/$': typeof OwnerRepoSplatRoute
   '/api/raw/$owner/$repo/$sha/$': typeof ApiRawOwnerRepoShaSplatRoute
 }
@@ -105,6 +121,8 @@ export interface FileRoutesById {
   '/dev/preview': typeof DevPreviewRoute
   '/github/install': typeof GithubInstallRoute
   '/github/installed': typeof GithubInstalledRoute
+  '/oauth/authorize': typeof OauthAuthorizeRoute
+  '/oauth/callback': typeof OauthCallbackRoute
   '/$owner/$repo/$': typeof OwnerRepoSplatRoute
   '/api/raw/$owner/$repo/$sha/$': typeof ApiRawOwnerRepoShaSplatRoute
 }
@@ -119,6 +137,8 @@ export interface FileRouteTypes {
     | '/dev/preview'
     | '/github/install'
     | '/github/installed'
+    | '/oauth/authorize'
+    | '/oauth/callback'
     | '/$owner/$repo/$'
     | '/api/raw/$owner/$repo/$sha/$'
   fileRoutesByTo: FileRoutesByTo
@@ -131,6 +151,8 @@ export interface FileRouteTypes {
     | '/dev/preview'
     | '/github/install'
     | '/github/installed'
+    | '/oauth/authorize'
+    | '/oauth/callback'
     | '/$owner/$repo/$'
     | '/api/raw/$owner/$repo/$sha/$'
   id:
@@ -143,6 +165,8 @@ export interface FileRouteTypes {
     | '/dev/preview'
     | '/github/install'
     | '/github/installed'
+    | '/oauth/authorize'
+    | '/oauth/callback'
     | '/$owner/$repo/$'
     | '/api/raw/$owner/$repo/$sha/$'
   fileRoutesById: FileRoutesById
@@ -156,6 +180,8 @@ export interface RootRouteChildren {
   DevPreviewRoute: typeof DevPreviewRoute
   GithubInstallRoute: typeof GithubInstallRoute
   GithubInstalledRoute: typeof GithubInstalledRoute
+  OauthAuthorizeRoute: typeof OauthAuthorizeRoute
+  OauthCallbackRoute: typeof OauthCallbackRoute
   OwnerRepoSplatRoute: typeof OwnerRepoSplatRoute
   ApiRawOwnerRepoShaSplatRoute: typeof ApiRawOwnerRepoShaSplatRoute
 }
@@ -218,6 +244,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GithubInstalledRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/oauth/authorize': {
+      id: '/oauth/authorize'
+      path: '/oauth/authorize'
+      fullPath: '/oauth/authorize'
+      preLoaderRoute: typeof OauthAuthorizeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth/callback': {
+      id: '/oauth/callback'
+      path: '/oauth/callback'
+      fullPath: '/oauth/callback'
+      preLoaderRoute: typeof OauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$owner/$repo/$': {
       id: '/$owner/$repo/$'
       path: '/$owner/$repo/$'
@@ -244,6 +284,8 @@ const rootRouteChildren: RootRouteChildren = {
   DevPreviewRoute: DevPreviewRoute,
   GithubInstallRoute: GithubInstallRoute,
   GithubInstalledRoute: GithubInstalledRoute,
+  OauthAuthorizeRoute: OauthAuthorizeRoute,
+  OauthCallbackRoute: OauthCallbackRoute,
   OwnerRepoSplatRoute: OwnerRepoSplatRoute,
   ApiRawOwnerRepoShaSplatRoute: ApiRawOwnerRepoShaSplatRoute,
 }

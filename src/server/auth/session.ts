@@ -50,17 +50,23 @@ function tokenKey() {
 // functions, and each one asks for the session.
 const loaded = new WeakMap<Request, Promise<ActiveSession | null>>()
 
-export async function createSession(user: SessionUser, tokens: TokenSet) {
-  const db = getDb()
+/** Records who someone is on GitHub, so their comments can show it. */
+export async function upsertUser(user: SessionUser) {
   const now = Date.now()
-  const key = await tokenKey()
-  await db
+  await getDb()
     .insert(users)
     .values({ ...user, updatedAt: now })
     .onConflictDoUpdate({
       target: users.id,
       set: { login: user.login, name: user.name, avatarUrl: user.avatarUrl, updatedAt: now },
     })
+}
+
+export async function createSession(user: SessionUser, tokens: TokenSet) {
+  const db = getDb()
+  const now = Date.now()
+  const key = await tokenKey()
+  await upsertUser(user)
   // Sessions whose refresh token has expired can never be used again.
   await db.delete(sessions).where(lt(sessions.refreshExpiresAt, now))
   const token = randomToken()

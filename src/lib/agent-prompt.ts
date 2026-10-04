@@ -38,20 +38,20 @@ export function placeAnchored(
 }
 
 /** A fence longer than any run of backticks in the text. */
-function fenced(text: string) {
+export function fenced(text: string) {
   const longest = Math.max(0, ...(text.match(/`+/g) ?? []).map((run) => run.length))
   const fence = '`'.repeat(Math.max(3, longest + 1))
   return `${fence}\n${text}\n${fence}`
 }
 
-function blockquote(text: string) {
+export function blockquote(text: string) {
   return text
     .split('\n')
     .map((line) => (line ? `> ${line}` : '>'))
     .join('\n')
 }
 
-function comment(c: CommentView) {
+export function comment(c: CommentView) {
   const via = c.via ? ` (via ${c.via})` : ''
   return `**${c.author.login}**${via}:\n\n${c.body}`
 }
