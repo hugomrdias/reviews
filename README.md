@@ -11,7 +11,7 @@ Built with TanStack Start, React, [@pierre/trees](https://trees.software) for th
 
 ## Run it locally
 
-Requirements: Node 22.12 or later and pnpm 12.
+Requirements: pnpm 12. It installs the pinned Node 24 for the project's scripts (`devEngines` in `package.json`).
 
 1. Register a GitHub App for development (see [GitHub App](#github-app)), using `http://localhost:3000/auth/callback` as the callback URL.
 2. Copy `.dev.vars.example` to `.dev.vars`. Fill in the app's client ID, slug and client secret, and a session secret (`openssl rand -base64 32`). The vars in `wrangler.jsonc` are production values; `.dev.vars` overrides them locally.

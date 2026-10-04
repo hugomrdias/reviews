@@ -68,8 +68,16 @@
     "vitest": "4.1.11",
     "wrangler": "4.147.0"
   },
+  "packageManager": "pnpm@12.9.1",
   "engines": {
-    "node": ">=22.12"
+    "node": ">=24"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.21.0",
+      "onFail": "download"
+    }
   },
   "intent": {
     "skills": [

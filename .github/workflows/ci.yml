@@ -19,7 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup
+      # pnpm and Node versions come from packageManager and devEngines in package.json.
+      - uses: pnpm/setup@v3
+        with:
+          cache: true
+          require-lockfile: true
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
@@ -39,7 +43,10 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup
+      - uses: pnpm/setup@v3
+        with:
+          cache: true
+          require-lockfile: true
       # Migrations run first, so they must stay compatible with the code still serving traffic.
       - run: pnpm db:migrate:remote
       - run: pnpm build
@@ -65,7 +72,10 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup
+      - uses: pnpm/setup@v3
+        with:
+          cache: true
+          require-lockfile: true
       # Previews share one database, so a pull request's new migrations land there before it merges.
       - run: pnpm exec wrangler d1 migrations apply DB --remote --config wrangler.preview-migrations.jsonc
       - run: pnpm build
@@ -97,7 +107,10 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup
+      - uses: pnpm/setup@v3
+        with:
+          cache: true
+          require-lockfile: true
       - name: Delete the Preview
         # A pull request whose checks never passed has no Preview to delete.
         continue-on-error: true
