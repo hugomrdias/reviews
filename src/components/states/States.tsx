@@ -6,6 +6,11 @@ import { toSplat } from '@/lib/links'
 import { basename, isMarkdown } from '@/lib/paths'
 import { cn } from '@/lib/utils'
 
+/** Page shell for a state shown in place of a route's content. */
+export function StatePage({ children }: { children: ReactNode }) {
+  return <main className="min-h-dvh px-6">{children}</main>
+}
+
 function StateBlock({ icon, title, children }: { icon: ReactNode; title: string; children?: ReactNode }) {
   return (
     <div className="mx-auto flex max-w-md flex-col items-start gap-3 py-16">
@@ -60,14 +65,14 @@ export function RepoNotFound() {
 /** Any address that matches no page. */
 export function PageNotFound() {
   return (
-    <main className="px-6">
+    <StatePage>
       <StateBlock icon={<FileQuestion />} title="There's no page here">
         <p>Check the address, or open a repository from your list.</p>
         <Link to="/" className={cn(buttonVariants({ variant: 'outline' }))}>
           Back to your repositories
         </Link>
       </StateBlock>
-    </main>
+    </StatePage>
   )
 }
 

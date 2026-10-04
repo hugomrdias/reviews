@@ -20,6 +20,7 @@ import {
   RateLimited,
   RepoNotFound,
   RepoNotSelected,
+  StatePage,
   UnviewableFile,
 } from '@/components/states/States'
 import { Button } from '@/components/ui/button'
@@ -73,10 +74,10 @@ interface FileViewerProps {
 
 export function FileViewer({ viewer, owner, repo, splat, search, preloadedTree }: FileViewerProps) {
   const { data: loc } = useSuspenseQuery(locationQuery(owner, repo, splat))
-  if (loc.status === 'app_not_installed') return <Centered><AppNotInstalled owner={loc.owner} installUrl={loc.installUrl} /></Centered>
-  if (loc.status === 'repo_not_selected') return <Centered><RepoNotSelected owner={loc.owner} settingsUrl={loc.settingsUrl} /></Centered>
-  if (loc.status === 'rate_limited') return <Centered><RateLimited resetAt={loc.resetAt} /></Centered>
-  if (loc.status === 'not_found') return <Centered><RepoNotFound /></Centered>
+  if (loc.status === 'app_not_installed') return <StatePage><AppNotInstalled owner={loc.owner} installUrl={loc.installUrl} /></StatePage>
+  if (loc.status === 'repo_not_selected') return <StatePage><RepoNotSelected owner={loc.owner} settingsUrl={loc.settingsUrl} /></StatePage>
+  if (loc.status === 'rate_limited') return <StatePage><RateLimited resetAt={loc.resetAt} /></StatePage>
+  if (loc.status === 'not_found') return <StatePage><RepoNotFound /></StatePage>
   return (
     <RepoViewer
       viewer={viewer}
@@ -90,10 +91,6 @@ export function FileViewer({ viewer, owner, repo, splat, search, preloadedTree }
       preloadedTree={preloadedTree}
     />
   )
-}
-
-function Centered({ children }: { children: React.ReactNode }) {
-  return <main className="min-h-dvh px-6">{children}</main>
 }
 
 interface RepoViewerProps {

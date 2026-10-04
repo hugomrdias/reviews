@@ -34,8 +34,11 @@ const LANG_ALIASES: Record<string, string> = {
   md: 'markdown',
 }
 
+/** Languages Diffs renders itself, without a Shiki grammar. */
+const BUILT_IN_LANGS = new Set(['text', 'ansi'])
+
 /**
- * The Diffs language for a fence name. Anything Shiki doesn't bundle
+ * The Diffs language for a fence name. Anything else Shiki doesn't bundle
  * (plain text, unknown names, typos) renders as 'text', which Diffs
  * shows unhighlighted instead of throwing.
  */
@@ -43,5 +46,5 @@ export function normalizeLang(lang: string | undefined) {
   if (!lang) return 'text'
   const lower = lang.toLowerCase()
   const name = LANG_ALIASES[lower] ?? lower
-  return Object.hasOwn(bundledLanguages, name) ? name : 'text'
+  return BUILT_IN_LANGS.has(name) || Object.hasOwn(bundledLanguages, name) ? name : 'text'
 }
