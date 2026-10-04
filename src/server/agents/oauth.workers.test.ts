@@ -51,6 +51,7 @@ describe('the agent guide', () => {
     expect(text).toMatch(/^# Reviews\n/)
     expect(text).toContain('Reviews (localhost:3000)')
     expect(text).toContain('claude mcp add --transport http reviews http://localhost:3000/mcp')
+    expect(text).toContain('codex mcp add reviews --url http://localhost:3000/mcp')
   })
 
   it('answers the home page with it only when markdown is preferred', async () => {

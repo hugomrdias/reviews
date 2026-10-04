@@ -1,7 +1,7 @@
 // What a coding agent reads when someone says "use reviews.example.com to
 // address the comments": served as /llms.txt, and as / to clients that ask
-// for markdown. It only has to get the agent connected. The MCP server's own
-// instructions cover the work.
+// for markdown. Its job is getting the agent connected, with an outline of the
+// work. The MCP server's own instructions have the full rules.
 
 /** The guide, naming this deployment's site and MCP endpoint. */
 export function agentGuide(appUrl: string, mcpUrl: string) {
@@ -12,19 +12,31 @@ export function agentGuide(appUrl: string, mcpUrl: string) {
 
 ## Connect
 
-The MCP server is at ${mcpUrl} (Streamable HTTP, with OAuth). Signing in happens in the person's browser with their GitHub account, so the person has to add the server and approve the sign-in:
+The MCP server is at ${mcpUrl} (Streamable HTTP, with OAuth). If you already have the Reviews tools (list_threads, get_thread, reply, mark_addressed), go straight to the work below.
 
-- Claude Code: run \`claude mcp add --transport http reviews ${mcpUrl}\`, then sign in from \`/mcp\`.
-- Other MCP clients: add a remote HTTP server with the URL above.
+Otherwise, set the server up with the person. It adds a server to their MCP config, so run the command once they ask you to connect or approve it:
 
-If you don't have the Reviews tools (list_threads, get_thread, reply, mark_addressed), give the person these steps and stop. Don't read the site's pages instead: they need a signed-in browser.
+- Codex: check with \`codex mcp get reviews\`, then add it with \`codex mcp add reviews --url ${mcpUrl}\`. If adding it doesn't start the sign-in, run \`codex mcp login reviews\`.
+- Claude Code: run \`claude mcp add --transport http reviews ${mcpUrl}\`. The person signs in from \`/mcp\`.
+- Other MCP clients: add a remote Streamable HTTP server with the URL above.
 
-## Address comments
+The sign-in opens in the person's browser with their GitHub account, so wait for them to finish it. If the tools still aren't there in this session, ask the person to restart their client and come back to this chat.
 
-1. Find the repository with \`git remote get-url origin\`, and pass it to the tools as owner/name.
-2. Use the address_comments prompt, or call list_threads and then get_thread.
-3. Change files where a comment asks for a clear change. Reply on the thread when it asks a question or needs a decision.
-4. After committing, call mark_addressed with a short summary and the commit SHA. A person confirms it.
+Until the tools work, you can't see the comments. Tell the person the connection isn't set up yet, which is different from there being no comments. The site's pages need a signed-in browser, so the tools are the only way in.
+
+## Work with comments
+
+Find the repository with \`git remote get-url origin\`, and pass it to the tools as owner/name.
+
+### Check comments
+
+When asked to check, list or summarize the comments, call list_threads, then get_thread for the threads that matter. Report each one with its file, lines and url. Checking is read-only: files and threads stay as they are until the person asks you to address them.
+
+### Address comments
+
+1. Use the address_comments prompt, or call list_threads and then get_thread.
+2. Change files where a comment asks for a clear change. Reply on the thread when it asks a question or needs a decision.
+3. After committing, call mark_addressed with a short summary and the commit SHA. A person confirms it.
 
 The server's instructions have the full rules.
 `
