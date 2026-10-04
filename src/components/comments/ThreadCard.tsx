@@ -242,13 +242,15 @@ function ThreadMenu({
   return (
     <DropdownMenu>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="ml-auto size-8" aria-label="Thread actions">
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
+        <TooltipTrigger
+          render={
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="ml-auto size-8" aria-label="Thread actions">
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+          }
+        />
         <TooltipContent>Thread actions</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" className="w-60">

@@ -53,11 +53,11 @@ export function AppSidebar({
           {repo.private && <Lock className="size-3.5 shrink-0 text-muted-foreground" aria-label="Private" />}
         </Link>
         <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant="outline" className="w-fit max-w-full gap-1 font-mono text-[11px] font-normal">
-              <GitBranch className="size-3" />
-              <span className="truncate">{isSha ? shortSha(refName) : refName}</span>
-            </Badge>
+          <TooltipTrigger
+            render={<Badge variant="outline" className="w-fit max-w-full gap-1 font-mono text-[11px] font-normal" />}
+          >
+            <GitBranch className="size-3" />
+            <span className="truncate">{isSha ? shortSha(refName) : refName}</span>
           </TooltipTrigger>
           <TooltipContent>Showing commit {shortSha(sha)}</TooltipContent>
         </Tooltip>

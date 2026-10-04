@@ -53,7 +53,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         <ScriptOnce>{themeScript}</ScriptOnce>
         <ThemeProvider initial={theme}>
-          <TooltipProvider delayDuration={300}>
+          <TooltipProvider delay={300}>
             {children}
             <Toaster position="bottom-center" />
           </TooltipProvider>
