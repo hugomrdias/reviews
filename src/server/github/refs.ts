@@ -1,6 +1,6 @@
 import { FULL_SHA_PATTERN } from '@/lib/refs'
 import { cached } from '../cache'
-import { githubFetch, githubJson, NotFoundError } from './client'
+import { GitHubError, githubFetch, githubJson, NotFoundError } from './client'
 
 export const FULL_SHA = FULL_SHA_PATTERN
 
@@ -92,7 +92,10 @@ export async function resolveLocation(
     try {
       return { ref: first, sha: await commitShaFor(token, base, first), path: splitRefPath(clean, first) }
     } catch (error) {
-      if (error instanceof NotFoundError) throw new NotFoundError(`Unknown ref: ${first}`, 404)
+      // The commits API answers 422 when the ref doesn't resolve to a commit.
+      if (error instanceof NotFoundError || (error instanceof GitHubError && error.status === 422)) {
+        throw new NotFoundError(`Unknown ref: ${first}`, 404)
+      }
       throw error
     }
   })
