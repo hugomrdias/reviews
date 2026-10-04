@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "reviews": {
+      "type": "http",
+      "url": "https://reviews.hugodias.me/mcp"
+    }
+  }
+}

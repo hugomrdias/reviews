@@ -30,6 +30,8 @@ To work on the viewer without signing in, open http://localhost:3000/dev/preview
 
 ## Connect an agent
 
+The [Reviews for Github plugin](plugins/reviews/README.md) bundles the MCP connection with shared skills for checking and addressing comments in Codex and Claude Code. This repository includes local marketplaces for both clients. The plugin guide also covers web connections and testing before publication.
+
 Reviews is an MCP server at `/mcp`. In Claude Code, from the repository you're working on:
 
 ```bash
@@ -157,6 +159,7 @@ All Previews share one database, so a pull request's migrations reach it before 
 |---|---|
 | `pnpm dev` | Dev server on port 3000, with the local D1 database |
 | `pnpm build` | Production build |
+| `pnpm plugin:package` | Create `dist/reviews-plugin.zip` |
 | `pnpm test` | Unit tests |
 | `pnpm typecheck` | TypeScript check |
 | `pnpm db:generate` | New migration from `src/server/db/schema.ts` |
