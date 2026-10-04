@@ -29,6 +29,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   }),
   head: ({ matches }) => {
     const origin = appUrl()
+    const url = new URL(matches.at(-1)?.pathname ?? '/', origin).toString()
     // Every page shares the same generic card. File pages are often in private
     // repositories, so previews never describe what's in them.
     return {
@@ -42,7 +43,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         { property: 'og:type', content: 'website' },
         { property: 'og:title', content: 'Reviews' },
         { property: 'og:description', content: DESCRIPTION },
-        { property: 'og:url', content: new URL(matches.at(-1)?.pathname ?? '/', origin).toString() },
+        { property: 'og:url', content: url },
         // Bump v after regenerating the card. Link previews cache images by URL.
         { property: 'og:image', content: new URL('/og-image.png?v=2', origin).toString() },
         { property: 'og:image:width', content: '1200' },
@@ -51,6 +52,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         { name: 'twitter:card', content: 'summary_large_image' },
       ],
       links: [
+        // Without the query, so the home page's ?returnTo= variants resolve to one URL.
+        { rel: 'canonical', href: url },
         { rel: 'preload', href: sansFont, as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' },
         { rel: 'stylesheet', href: appCss },
         // logo.svg is the source. Regenerate the ICO and PNGs from it with scripts/icons.sh.
