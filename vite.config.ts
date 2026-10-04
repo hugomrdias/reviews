@@ -6,20 +6,26 @@ import tailwindcss from '@tailwindcss/vite'
 import { cloudflare } from '@cloudflare/vite-plugin'
 
 const diffsStub = fileURLToPath(new URL('./src/stubs/diffs-ssr-stub.tsx', import.meta.url))
+const mermaidStub = fileURLToPath(new URL('./src/stubs/mermaid-ssr-stub.ts', import.meta.url))
+
+const ssrStubs: Record<string, string> = {
+  '@pierre/diffs/react': diffsStub,
+  '@pierre/diffs': diffsStub,
+  shiki: diffsStub,
+  mermaid: mermaidStub,
+}
 
 /**
- * Code highlighting (@pierre/diffs + Shiki) only renders in the browser, so
- * the server gets a stub instead. This keeps Shiki's grammars out of the
- * Worker bundle.
+ * Code highlighting (@pierre/diffs + Shiki) and Mermaid diagrams only render
+ * in the browser, so the server gets stubs instead. This keeps Shiki's
+ * grammars and Mermaid out of the Worker bundle.
  */
-function diffsClientOnly(): Plugin {
+function clientOnly(): Plugin {
   return {
-    name: 'diffs-client-only',
+    name: 'client-only',
     enforce: 'pre',
     resolveId(id) {
-      if (this.environment.name === 'ssr' && (id === '@pierre/diffs/react' || id === '@pierre/diffs' || id === 'shiki')) {
-        return diffsStub
-      }
+      if (this.environment.name === 'ssr' && Object.hasOwn(ssrStubs, id)) return ssrStubs[id]
     },
   }
 }
@@ -76,8 +82,8 @@ const sharedDeps = [
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   optimizeDeps: {
-    // Highlighting is stubbed out of the Worker, so only the browser bundles it.
-    include: [...sharedDeps, '@pierre/diffs', '@pierre/diffs/react', 'shiki', 'react-dom/client'],
+    // Highlighting and Mermaid are stubbed out of the Worker, so only the browser bundles them.
+    include: [...sharedDeps, '@pierre/diffs', '@pierre/diffs/react', 'shiki', 'mermaid', 'react-dom/client'],
   },
   environments: {
     ssr: {
@@ -87,7 +93,7 @@ export default defineConfig({
     },
   },
   plugins: [
-    diffsClientOnly(),
+    clientOnly(),
     cloudflare({ viteEnvironment: { name: 'ssr' } }),
     tailwindcss(),
     tanstackStart(),
