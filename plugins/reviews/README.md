@@ -28,7 +28,7 @@ codex plugin marketplace add .
 codex plugin list --marketplace reviews --available --json
 ```
 
-In the desktop app, open Plugins and select the **Reviews for Github** local marketplace. Install **Reviews for Github** and authenticate when prompted. Restart the app after changing the package. Invoke `$check-comments` or `$address-comments`, or ask to check or address Reviews comments.
+To install from the CLI, run `codex plugin add reviews@reviews`, then authenticate with `codex mcp login reviews`. In the desktop app, open Plugins and select the **Reviews for Github** local marketplace. Install **Reviews for Github** and authenticate when prompted. Restart the app after changing the package. Invoke `$check-comments` or `$address-comments`, or ask to check or address Reviews comments.
 
 Keep one connection per client. If you previously configured a standalone `reviews` server, remove it with `codex mcp remove reviews` before using the plugin's connection.
 
@@ -64,4 +64,4 @@ After connecting, try each scenario in a disposable repository that the Reviews 
 3. Ask to address a comment requesting a small edit. Confirm the edit and relevant checks, then a reply and addressed status only after the fix is committed. A person confirms or reopens it.
 4. Ask to address a question that needs a decision. Confirm it stays open with a question or blocker.
 
-The manifests can be validated locally. OAuth and behavior in each client require separate end-to-end verification before publishing. Installing the plugin does not submit it to either public directory.
+These four scenarios passed on 2026-10-04 in the Claude Code CLI (2.1.289) and the Codex CLI (0.160.0), both installed from the local marketplaces. The desktop apps and web clients are not verified yet; check them before publishing. Run the scenarios again after changing the skills or the server's instructions. Installing the plugin does not submit it to either public directory.
