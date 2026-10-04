@@ -1,13 +1,11 @@
 import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
-import { lineAt } from './anchoring/line-anchor'
-import { matchQuote } from './anchoring/match-quote'
+import { placeThread, type Placement } from './anchoring/place'
+import { pageText, type PageText } from './markdown/page-text'
+import { isMarkdown } from './paths'
 import type { CommentView } from './threads'
 
 // "Copy for agent": a file's open threads as markdown a coding agent can act
 // on. Each thread gets its source lines, its quote and its comments.
-
-/** Same bar the anchoring uses for "close enough to be the same text". */
-const MAX_ERROR_RATIO = 0.25
 
 export interface AgentPromptInput {
   /** owner/name */
@@ -23,22 +21,20 @@ export interface AgentPromptInput {
 }
 
 /**
- * Source lines a thread covers in the file being viewed, or null when it
- * can't be placed. Text comments quote the rendered page, so on a changed
- * file their quote is looked up in the source, where markdown syntax around
- * it counts as small differences.
+ * A thread's state and source lines in the file being viewed. The page
+ * already placed it; page comments have no source lines there, and in the
+ * source view no state either, so those are worked out from the page text.
  */
-export function sourceLines({ thread, state, lines }: AnchoredThread, source: string, blobSha: string) {
-  if (state === 'outdated') return null
-  if (lines) return lines
-  const { anchor } = thread
-  if (anchor.kind !== 'text') return null
-  if (thread.blobSha === blobSha && anchor.lineStart !== null) {
-    return { start: anchor.lineStart, end: anchor.lineEnd ?? anchor.lineStart }
-  }
-  const match = matchQuote(source, anchor.quoteExact, { prefix: anchor.quotePrefix, suffix: anchor.quoteSuffix })
-  if (!match || match.errors > anchor.quoteExact.length * MAX_ERROR_RATIO) return null
-  return { start: lineAt(source, match.start), end: lineAt(source, Math.max(match.start, match.end - 1)) }
+export function placeAnchored(
+  { thread, state, lines }: AnchoredThread,
+  file: { source: string; blobSha: string },
+  page: () => PageText | null,
+): Placement {
+  if (state === 'outdated') return { state, lines: null }
+  if (lines) return { state: state === 'unplaced' ? 'attached' : state, lines }
+  const placed = placeThread(thread, file, { page: page() })
+  if (state === 'unplaced') return placed
+  return { state, lines: placed.lines }
 }
 
 /** A fence longer than any run of backticks in the text. */
@@ -91,9 +87,15 @@ function section({ thread, state, at }: Placed, n: number, path: string, threadU
 }
 
 export function threadsForAgent({ repo, ref, sha, path, source, blobSha, threads, threadUrl }: AgentPromptInput) {
+  let page: PageText | null | undefined
+  // Built at most once, and only when a page comment needs it.
+  const getPage = () => (page === undefined ? (page = isMarkdown(path) ? pageText(source, path) : null) : page)
   const placed: Placed[] = threads
     .filter((a) => a.thread.status === 'open')
-    .map((a) => ({ ...a, at: sourceLines(a, source, blobSha) }))
+    .map((a) => {
+      const { state, lines } = placeAnchored(a, { source, blobSha }, getPage)
+      return { ...a, state, at: lines }
+    })
     .sort((a, b) => (a.at?.start ?? Infinity) - (b.at?.start ?? Infinity) || a.thread.createdAt - b.thread.createdAt)
   // Threads whose text is gone go last, numbered on from the rest.
   const current = placed.filter((a) => a.state !== 'outdated')
