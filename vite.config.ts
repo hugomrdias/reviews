@@ -24,45 +24,67 @@ function diffsClientOnly(): Plugin {
   }
 }
 
+// Pre-bundled up front in both environments. A dependency discovered
+// mid-session re-optimizes, and the page or the Worker can end up with two
+// copies of React until the next reload.
+const sharedDeps = [
+  '@pierre/trees',
+  '@pierre/trees/react',
+  'diff',
+  'approx-string-match',
+  'react-markdown',
+  'remark-gfm',
+  'remark-frontmatter',
+  'rehype-raw',
+  'rehype-sanitize',
+  'github-slugger',
+  'unist-util-visit',
+  '@base-ui/react/avatar',
+  '@base-ui/react/button',
+  '@base-ui/react/dialog',
+  '@base-ui/react/drawer',
+  '@base-ui/react/input',
+  '@base-ui/react/menu',
+  '@base-ui/react/merge-props',
+  '@base-ui/react/popover',
+  '@base-ui/react/preview-card',
+  '@base-ui/react/scroll-area',
+  '@base-ui/react/select',
+  '@base-ui/react/separator',
+  '@base-ui/react/tabs',
+  '@base-ui/react/toggle',
+  '@base-ui/react/toggle-group',
+  '@base-ui/react/tooltip',
+  '@base-ui/react/use-render',
+  'cmdk',
+  'sonner',
+  'react',
+  'react-dom',
+  'react/jsx-runtime',
+  'react/jsx-dev-runtime',
+  '@tanstack/react-query',
+  '@tanstack/react-router-ssr-query',
+  'class-variance-authority',
+  'clsx',
+  'tailwind-merge',
+  'lucide-react',
+  'zod',
+  'hast-util-sanitize',
+  '@pierre/trees/ssr',
+]
+
 export default defineConfig({
   resolve: { tsconfigPaths: true },
-  // Pre-bundle up front: discovering these mid-session re-optimizes and can
-  // leave two copies of React in the page.
   optimizeDeps: {
-    include: [
-      '@pierre/diffs',
-      '@pierre/diffs/react',
-      '@pierre/trees',
-      '@pierre/trees/react',
-      'diff',
-      'approx-string-match',
-      'react-markdown',
-      'remark-gfm',
-      'remark-frontmatter',
-      'rehype-raw',
-      'rehype-sanitize',
-      'github-slugger',
-      'unist-util-visit',
-      '@base-ui/react/avatar',
-      '@base-ui/react/button',
-      '@base-ui/react/dialog',
-      '@base-ui/react/input',
-      '@base-ui/react/menu',
-      '@base-ui/react/merge-props',
-      '@base-ui/react/popover',
-      '@base-ui/react/preview-card',
-      '@base-ui/react/scroll-area',
-      '@base-ui/react/select',
-      '@base-ui/react/separator',
-      '@base-ui/react/tabs',
-      '@base-ui/react/toggle',
-      '@base-ui/react/toggle-group',
-      '@base-ui/react/tooltip',
-      '@base-ui/react/use-render',
-      'cmdk',
-      'vaul',
-      'sonner',
-    ],
+    // Highlighting is stubbed out of the Worker, so only the browser bundles it.
+    include: [...sharedDeps, '@pierre/diffs', '@pierre/diffs/react', 'react-dom/client'],
+  },
+  environments: {
+    ssr: {
+      optimizeDeps: {
+        include: [...sharedDeps, 'react-dom/server', 'drizzle-orm', 'drizzle-orm/d1', 'drizzle-orm/sqlite-core'],
+      },
+    },
   },
   plugins: [
     diffsClientOnly(),
