@@ -16,7 +16,7 @@ export default defineConfig(async () => {
             tsconfigPaths: true,
             alias: { 'cloudflare:workers': fileURLToPath(new URL('./src/test/cloudflare-workers.ts', import.meta.url)) },
           },
-          test: { name: 'unit', include: ['src/**/*.test.{ts,tsx}'], exclude: [WORKERS_TESTS] },
+          test: { name: 'unit', include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.ts'], exclude: [WORKERS_TESTS] },
         },
         {
           // Tests that need the Workers runtime and a real D1, with the migrations applied.

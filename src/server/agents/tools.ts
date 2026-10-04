@@ -224,9 +224,13 @@ export function threadListText(list: ThreadList) {
     const where = t.lines
       ? `${t.path}:${t.lines.start === t.lines.end ? t.lines.start : `${t.lines.start}-${t.lines.end}`}`
       : `${t.path} (${t.state === 'outdated' ? 'text removed' : 'line unknown'})`
+    // An open thread that was addressed before was reopened by a person, so its
+    // latest reply can still be the earlier "fixed".
     const status =
       t.status === 'open'
-        ? []
+        ? t.addressed
+          ? [`_Reopened after ${t.addressed.by} marked it addressed._`]
+          : []
         : [`_${t.status === 'addressed' ? 'Addressed' : 'Resolved'}${t.addressed ? ` by ${t.addressed.by}` : ''}._`]
     const comments = t.comments.map((c) =>
       comment({ id: c.id, author: { id: 0, login: c.author, name: null, avatarUrl: null }, body: c.body, via: c.via, createdAt: c.createdAt, editedAt: null, deleted: false }),

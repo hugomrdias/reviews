@@ -17,7 +17,7 @@ From the repository root:
 pnpm plugin:package
 ```
 
-This uses the project's Node.js runtime to create `dist/reviews-plugin.zip` with the manifests at the archive root, including Claude's dotfiles. Each run replaces the archive, so deleted source files do not remain in it. The ZIP is useful for sharing or uploading; local marketplaces use the plugin folder directly.
+This uses the project's Node.js runtime to create `dist/reviews-plugin.zip` with the manifests at the archive root, including Claude's dotfiles. It packs the files git tracks or would track, so ignored files like `.DS_Store` stay out. Each run replaces the archive, so deleted source files do not remain in it. The ZIP is useful for sharing or uploading; local marketplaces use the plugin folder directly.
 
 ## Codex
 
