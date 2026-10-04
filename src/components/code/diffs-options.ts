@@ -1,4 +1,4 @@
-import { bundledLanguages } from 'shiki'
+import { bundledLanguages } from 'shiki/langs'
 import { useMemo } from 'react'
 import { useTheme } from '@/lib/theme'
 

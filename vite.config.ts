@@ -12,6 +12,7 @@ const ssrStubs: Record<string, string> = {
   '@pierre/diffs/react': diffsStub,
   '@pierre/diffs': diffsStub,
   shiki: diffsStub,
+  'shiki/langs': diffsStub,
   mermaid: mermaidStub,
 }
 
@@ -83,7 +84,7 @@ export default defineConfig({
   resolve: { tsconfigPaths: true },
   optimizeDeps: {
     // Highlighting and Mermaid are stubbed out of the Worker, so only the browser bundles them.
-    include: [...sharedDeps, '@pierre/diffs', '@pierre/diffs/react', 'shiki', 'mermaid', 'react-dom/client'],
+    include: [...sharedDeps, '@pierre/diffs', '@pierre/diffs/react', 'shiki', 'shiki/langs', 'mermaid', 'react-dom/client'],
   },
   environments: {
     ssr: {

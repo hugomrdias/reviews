@@ -13,8 +13,18 @@ function loadMermaid() {
   return mermaidPromise
 }
 
+// The theme Mermaid was last set up for; a page of diagrams sets it up once.
+let initializedFor: boolean | undefined
+
 async function renderDiagram(id: string, source: string, dark: boolean) {
   const [mermaid] = await Promise.all([loadMermaid(), document.fonts.ready])
+  if (initializedFor !== dark) setUp(mermaid, dark)
+  const { svg } = await mermaid.render(id, source)
+  return svg
+}
+
+function setUp(mermaid: Mermaid, dark: boolean) {
+  initializedFor = dark
   mermaid.initialize({
     startOnLoad: false,
     // Diagrams come from arbitrary repos: labels are sanitized and
@@ -24,8 +34,6 @@ async function renderDiagram(id: string, source: string, dark: boolean) {
     theme: dark ? 'dark' : 'neutral',
     fontFamily: getComputedStyle(document.documentElement).getPropertyValue('--font-sans'),
   })
-  const { svg } = await mermaid.render(id, source)
-  return svg
 }
 
 type State = { status: 'pending' } | { status: 'done'; svg: string } | { status: 'error'; message: string }

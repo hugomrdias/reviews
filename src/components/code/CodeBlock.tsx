@@ -1,6 +1,5 @@
-import { ClientOnly } from '@tanstack/react-router'
-import { File } from '@pierre/diffs/react'
 import { memo, useMemo } from 'react'
+import { DiffsOnly, File } from './diffs'
 import { normalizeLang, useDiffsTheme } from './diffs-options'
 
 function hash(value: string) {
@@ -35,9 +34,9 @@ export const CodeBlock = memo(function CodeBlock({ code, lang }: { code: string;
   )
   return (
     <div data-anchor-skip className="overflow-hidden rounded-lg border bg-card">
-      <ClientOnly fallback={<PlainCode code={code} />}>
+      <DiffsOnly fallback={<PlainCode code={code} />}>
         <File file={file} options={options} />
-      </ClientOnly>
+      </DiffsOnly>
     </div>
   )
 })

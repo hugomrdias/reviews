@@ -8,6 +8,8 @@ import { getThemePreference, ThemeProvider, themeScript, type Theme } from '@/li
 import type { SessionUser } from '@/server/auth/session'
 
 import appCss from '../styles.css?url'
+// The interface font's Latin subset, which every page uses.
+import sansFont from '@fontsource-variable/atkinson-hyperlegible-next/files/atkinson-hyperlegible-next-latin-wght-normal.woff2?url'
 
 interface RouterContext {
   queryClient: QueryClient
@@ -19,9 +21,6 @@ const DESCRIPTION = 'Read and comment on the docs in your GitHub repos.'
 
 // The --paper color of each theme, for the browser's toolbar.
 const THEME_COLORS = { light: '#f6f7f9', dark: '#161b24' }
-
-const FONTS =
-  'https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Atkinson+Hyperlegible+Next:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Literata:ital,opsz,wght@0,7..72,400..700;1,7..72,400..700&display=swap'
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ context }) => ({
@@ -52,9 +51,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         { name: 'twitter:card', content: 'summary_large_image' },
       ],
       links: [
-        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
-        { rel: 'stylesheet', href: FONTS },
+        { rel: 'preload', href: sansFont, as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' },
         { rel: 'stylesheet', href: appCss },
         // logo.svg is the source. Regenerate the ICO and PNGs from it with scripts/icons.sh.
         { rel: 'icon', href: '/favicon.ico', sizes: '32x32' },

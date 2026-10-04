@@ -1,5 +1,4 @@
-import { ClientOnly } from '@tanstack/react-router'
-import { MultiFileDiff, type DiffLineAnnotation } from '@pierre/diffs/react'
+import type { DiffLineAnnotation } from '@pierre/diffs/react'
 import { useMemo } from 'react'
 import { ThreadCard, type ThreadLocation } from '@/components/comments/ThreadCard'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -8,6 +7,7 @@ import type { ThreadMutations } from '@/hooks/useThreadMutations'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { isMarkdown } from '@/lib/paths'
 import type { SessionUser } from '@/server/auth/session'
+import { DiffsOnly, MultiFileDiff } from './diffs'
 import { useDiffsTheme } from './diffs-options'
 
 interface CompareViewProps {
@@ -87,7 +87,7 @@ export function CompareView({
 
   return (
     <div className="overflow-hidden rounded-lg border bg-card" data-anchor-skip>
-      <ClientOnly fallback={<Skeleton className="h-96 w-full" />}>
+      <DiffsOnly fallback={<Skeleton className="h-96 w-full" />}>
         <MultiFileDiff<AnchoredThread>
           oldFile={oldFile ?? { name, contents: '' }}
           newFile={newFile ?? { name, contents: '' }}
@@ -108,7 +108,7 @@ export function CompareView({
             </div>
           )}
         />
-      </ClientOnly>
+      </DiffsOnly>
     </div>
   )
 }
