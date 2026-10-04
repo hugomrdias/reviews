@@ -3,22 +3,11 @@ import type { Element, ElementContent } from 'hast'
 import { AlertTriangle, Info, Lightbulb, MessageSquareWarning, OctagonAlert } from 'lucide-react'
 import { memo, useMemo, type ComponentProps, type ReactNode } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
-import rehypeRaw from 'rehype-raw'
-import rehypeSanitize from 'rehype-sanitize'
-import remarkFrontmatter from 'remark-frontmatter'
-import remarkGfm from 'remark-gfm'
 import { CodeBlock } from '@/components/code/CodeBlock'
 import { MermaidDiagram } from '@/components/markdown/MermaidDiagram'
 import { resolveAssetPath, resolveRepoLink, toSplat } from '@/lib/links'
-import { extname } from '@/lib/paths'
-import {
-  rehypeHeadingIds,
-  rehypeSourceLines,
-  remarkGithubAlerts,
-  remarkStripMdxEsm,
-  type AlertType,
-} from '@/lib/markdown/plugins'
-import { markdownSchema } from '@/lib/markdown/schema'
+import { markdownPipeline } from '@/lib/markdown/pipeline'
+import { ALERT_LABELS, type AlertType } from '@/lib/markdown/plugins'
 
 export interface RepoContext {
   owner: string
@@ -127,22 +116,18 @@ function MdPre({ node, children }: ComponentProps<'pre'> & { node?: Element }) {
   return <CodeBlock code={source} lang={lang} />
 }
 
-const ALERTS: Record<AlertType, { label: string; icon: ReactNode; tone: string }> = {
-  note: { label: 'Note', icon: <Info />, tone: 'border-l-sky-600 [&_svg]:text-sky-600' },
-  tip: { label: 'Tip', icon: <Lightbulb />, tone: 'border-l-emerald-600 [&_svg]:text-emerald-600' },
-  important: {
-    label: 'Important',
-    icon: <MessageSquareWarning />,
-    tone: 'border-l-violet-600 [&_svg]:text-violet-600',
-  },
-  warning: { label: 'Warning', icon: <AlertTriangle />, tone: 'border-l-amber-600 [&_svg]:text-amber-600' },
-  caution: { label: 'Caution', icon: <OctagonAlert />, tone: 'border-l-red-600 [&_svg]:text-red-600' },
+const ALERTS: Record<AlertType, { icon: ReactNode; tone: string }> = {
+  note: { icon: <Info />, tone: 'border-l-sky-600 [&_svg]:text-sky-600' },
+  tip: { icon: <Lightbulb />, tone: 'border-l-emerald-600 [&_svg]:text-emerald-600' },
+  important: { icon: <MessageSquareWarning />, tone: 'border-l-violet-600 [&_svg]:text-violet-600' },
+  warning: { icon: <AlertTriangle />, tone: 'border-l-amber-600 [&_svg]:text-amber-600' },
+  caution: { icon: <OctagonAlert />, tone: 'border-l-red-600 [&_svg]:text-red-600' },
 }
 
 function MdBlockquote({ node, children, ...rest }: ComponentProps<'blockquote'> & { node?: Element }) {
   const type = node?.properties.dataAlert as AlertType | undefined
-  const alert = type ? ALERTS[type] : undefined
-  if (!alert) return <blockquote {...rest}>{children}</blockquote>
+  if (!type || !ALERTS[type]) return <blockquote {...rest}>{children}</blockquote>
+  const alert = ALERTS[type]
   return (
     <div
       data-alert-box
@@ -152,16 +137,12 @@ function MdBlockquote({ node, children, ...rest }: ComponentProps<'blockquote'> 
     >
       <p className="mb-1.5 flex items-center gap-2 font-semibold [&_svg]:size-4">
         {alert.icon}
-        {alert.label}
+        {ALERT_LABELS[type]}
       </p>
       {children}
     </div>
   )
 }
-
-const remarkPlugins = [remarkGfm, remarkFrontmatter, remarkGithubAlerts]
-const mdxRemarkPlugins = [...remarkPlugins, remarkStripMdxEsm]
-const rehypePlugins = [rehypeRaw, rehypeSourceLines, rehypeHeadingIds, [rehypeSanitize, markdownSchema]] as const
 
 /**
  * Renders repo markdown the way GitHub does: GFM, alerts, sanitized raw
@@ -185,11 +166,12 @@ export const MarkdownView = memo(function MarkdownView({
     }),
     [ctx],
   )
+  const pipeline = markdownPipeline(ctx.path)
   return (
     <ReactMarkdown
-      remarkPlugins={extname(ctx.path) === 'mdx' ? mdxRemarkPlugins : remarkPlugins}
-      remarkRehypeOptions={{ clobberPrefix: '' }}
-      rehypePlugins={rehypePlugins as never}
+      remarkPlugins={pipeline.remarkPlugins}
+      remarkRehypeOptions={pipeline.remarkRehypeOptions}
+      rehypePlugins={pipeline.rehypePlugins}
       components={components}
     >
       {source}

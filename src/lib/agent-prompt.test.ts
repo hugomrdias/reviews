@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
-import { sourceLines, threadsForAgent } from './agent-prompt'
+import { placeAnchored, threadsForAgent } from './agent-prompt'
+import { pageText } from './markdown/page-text'
 import type { AnchorData, CommentView, ThreadView } from './threads'
 
 const BLOB = 'b'.repeat(40)
@@ -58,25 +59,42 @@ const textThread = thread('t1', anchor({ quoteExact: 'leaves at 9am UTC', lineSt
   comment('Could it be **10am**?'),
 ])
 
-describe('sourceLines', () => {
-  it('uses the placed lines when there are any', () => {
-    expect(sourceLines({ thread: textThread, state: 'attached', lines: { start: 9, end: 9 } }, source, BLOB)).toEqual({
-      start: 9,
-      end: 9,
-    })
+describe('placeAnchored', () => {
+  const OTHER = 'c'.repeat(40)
+  const page = (text: string) => () => pageText(text, 'docs/releases.md')
+
+  it('keeps what the page placed', () => {
+    const placed = placeAnchored({ thread: textThread, state: 'edited', lines: { start: 9, end: 9 } }, { source, blobSha: BLOB }, page(source))
+    expect(placed).toEqual({ state: 'edited', lines: { start: 9, end: 9 } })
   })
 
   it('trusts recorded lines while the file is unchanged', () => {
-    expect(sourceLines({ thread: textThread, state: 'attached' }, source, BLOB)).toEqual({ start: 3, end: 3 })
+    expect(placeAnchored({ thread: textThread, state: 'attached' }, { source, blobSha: BLOB }, page(source))).toEqual({
+      state: 'attached',
+      lines: { start: 3, end: 3 },
+    })
   })
 
-  it('finds rendered quotes in changed markdown source', () => {
+  it('finds page comments in a changed file, keeping the page state', () => {
     const moved = `Intro.\n\n${source}`
-    expect(sourceLines({ thread: textThread, state: 'attached' }, moved, 'c'.repeat(40))).toEqual({ start: 5, end: 5 })
+    expect(placeAnchored({ thread: textThread, state: 'edited' }, { source: moved, blobSha: OTHER }, page(moved))).toEqual({
+      state: 'edited',
+      lines: { start: 5, end: 5 },
+    })
   })
 
-  it('gives up on outdated threads', () => {
-    expect(sourceLines({ thread: textThread, state: 'outdated' }, source, BLOB)).toBeNull()
+  it('works out the state when the source view could not place a comment', () => {
+    const removed = source.replace('The release train leaves at **9am UTC** every weekday.', 'Trains are gone.')
+    expect(
+      placeAnchored({ thread: textThread, state: 'unplaced' }, { source: removed, blobSha: OTHER }, page(removed)),
+    ).toEqual({ state: 'outdated', lines: null })
+  })
+
+  it('gives outdated threads no lines', () => {
+    expect(placeAnchored({ thread: textThread, state: 'outdated' }, { source, blobSha: BLOB }, page(source))).toEqual({
+      state: 'outdated',
+      lines: null,
+    })
   })
 })
 

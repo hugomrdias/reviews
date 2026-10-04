@@ -6,6 +6,15 @@ import { visit } from 'unist-util-visit'
 export const ALERT_TYPES = ['note', 'tip', 'important', 'warning', 'caution'] as const
 export type AlertType = (typeof ALERT_TYPES)[number]
 
+/** The title the page shows above an alert's text. It's part of the page's text. */
+export const ALERT_LABELS: Record<AlertType, string> = {
+  note: 'Note',
+  tip: 'Tip',
+  important: 'Important',
+  warning: 'Warning',
+  caution: 'Caution',
+}
+
 const ALERT_MARKER = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(?:\r?\n|$)?/i
 
 /**
