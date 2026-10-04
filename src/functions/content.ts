@@ -1,8 +1,15 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { isDirectory } from '@/lib/paths'
-import { diagnoseNoAccess, listInstallations, requireRepoAccess, type NoAccess } from '@/server/github/access'
-import { githubJson, NotFoundError, RateLimitError } from '@/server/github/client'
+import type { CommentPermissions } from '@/lib/threads'
+import {
+  diagnoseNoAccess,
+  listInstallationRepos,
+  listInstallations,
+  requireRepoAccess,
+  type NoAccess,
+} from '@/server/github/access'
+import { NotFoundError, RateLimitError } from '@/server/github/client'
 import { getFileCommits, getFileContent, getTree, type FileContent } from '@/server/github/content'
 import { resolveLocation as resolve, type Location } from '@/server/github/refs'
 import { repoActivity } from '@/server/comments/store'
@@ -16,6 +23,7 @@ export interface RepoSummary {
   fullName: string
   private: boolean
   defaultBranch: string
+  permissions: CommentPermissions
 }
 
 export type LocationResult =
@@ -63,6 +71,7 @@ export const resolveLocation = createServerFn({ method: 'GET' })
           fullName: access.fullName,
           private: access.private,
           defaultBranch: access.defaultBranch,
+          permissions: access.permissions,
         },
         location,
       }
@@ -105,17 +114,6 @@ export const fetchFileCommits = createServerFn({ method: 'GET' })
     return getFileCommits(session.accessToken, access.owner, access.name, data.sha, data.path)
   })
 
-interface InstallationRepo {
-  id: number
-  full_name: string
-  name: string
-  description: string | null
-  owner: { login: string }
-  private: boolean
-  default_branch: string
-  pushed_at: string | null
-}
-
 export interface RepoListItem {
   account: string
   owner: string
@@ -141,16 +139,7 @@ export const fetchRepos = createServerFn({ method: 'GET' })
     const [lists, activity] = await Promise.all([
       Promise.all(
         installations.map(async (installation) => {
-          // 100 per page; stop at 1,000 so a huge org can't stall the page.
-          const repositories: InstallationRepo[] = []
-          for (let page = 1; page <= 10; page++) {
-            const data = await githubJson<{ total_count: number; repositories: InstallationRepo[] }>(
-              session.accessToken,
-              `/user/installations/${installation.id}/repositories?per_page=100&page=${page}`,
-            )
-            repositories.push(...data.repositories)
-            if (data.repositories.length < 100 || repositories.length >= data.total_count) break
-          }
+          const repositories = await listInstallationRepos(session, installation.id)
           return repositories.map((r) => ({ account: installation.login, repo: r }))
         }),
       ),

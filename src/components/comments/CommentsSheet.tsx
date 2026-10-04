@@ -73,7 +73,10 @@ export function CommentsSheet({ open, onOpenChange, tab, onTabChange, anchored, 
       >
         <SheetHeader className="border-b">
           <SheetTitle>Comments on this file</SheetTitle>
-          <SheetDescription>Outdated comments point at text that has since changed or been removed.</SheetDescription>
+          <SheetDescription>
+            Outdated comments point at text that has since changed or been removed.
+            {!rest.mutations.permissions.comment && ' You can read comments here; writing them needs write access to the repository.'}
+          </SheetDescription>
         </SheetHeader>
         <Tabs value={tab} onValueChange={(v) => onTabChange(v as typeof tab)} className="min-h-0 flex-1 gap-0">
           <TabsList activateOnFocus className="mx-4 mt-3 w-[calc(100%-2rem)]">
@@ -83,7 +86,13 @@ export function CommentsSheet({ open, onOpenChange, tab, onTabChange, anchored, 
           </TabsList>
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
             <TabsContent value="open">
-              <ThreadList items={groups.open} empty="No open comments. Select text in the page to start one." {...rest} />
+              <ThreadList
+                items={groups.open}
+                empty={
+                  rest.mutations.permissions.comment ? 'No open comments. Select text in the page to start one.' : 'No open comments.'
+                }
+                {...rest}
+              />
             </TabsContent>
             <TabsContent value="outdated">
               <ThreadList items={groups.outdated} empty="Every comment still matches the text." {...rest} />

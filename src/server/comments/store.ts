@@ -1,6 +1,6 @@
 import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
-import type { AnchorData, Author, ThreadView } from '@/lib/threads'
+import { canResolve, type AnchorData, type Author, type CommentPermissions, type ThreadView } from '@/lib/threads'
 import type { Db } from '../db/client'
 import { comments, threads, users, type User } from '../db/schema'
 
@@ -192,8 +192,12 @@ export async function setThreadStatus(
   repoId: number,
   threadId: string,
   status: 'open' | 'resolved',
+  permissions: CommentPermissions,
 ) {
-  await threadInRepo(db, threadId, repoId)
+  const thread = await threadInRepo(db, threadId, repoId)
+  if (!canResolve(permissions, thread.authorId, userId)) {
+    throw new ForbiddenError('Only the thread author or a maintainer can change this thread')
+  }
   const now = Date.now()
   await db
     .update(threads)

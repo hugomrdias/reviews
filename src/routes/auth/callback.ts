@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { env } from 'cloudflare:workers'
 import { finishOAuth } from '@/server/auth/flow'
-import { exchangeCode } from '@/server/auth/oauth'
+import { exchangeCode, OAuthError } from '@/server/auth/oauth'
 import { createSession } from '@/server/auth/session'
 import { githubJson } from '@/server/github/client'
 
@@ -33,7 +33,8 @@ export const Route = createFileRoute('/auth/callback')({
           await createSession({ id: user.id, login: user.login, name: user.name, avatarUrl: user.avatar_url }, tokens)
           return redirect(saved.returnTo)
         } catch (error) {
-          console.error('Sign-in failed', error)
+          // GitHub's error code (e.g. incorrect_client_credentials) says what to fix.
+          console.error('Sign-in failed', error instanceof OAuthError ? error.code : error)
           return redirect('/?signin=failed')
         }
       },

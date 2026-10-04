@@ -62,12 +62,12 @@ export function SourceView({
       disableFileHeader: true,
       overflow: isMarkdown(location.path) ? ('wrap' as const) : ('scroll' as const),
       lineHoverHighlight: 'both' as const,
-      enableGutterUtility: Boolean(viewer),
+      enableGutterUtility: Boolean(viewer) && mutations.permissions.comment,
       onGutterUtilityClick: (range: { start: number; end: number }) => {
         onDraftRef.current(linesAnchor(sourceRef.current, range.start, range.end))
       },
     }),
-    [diffsTheme, location.path, viewer],
+    [diffsTheme, location.path, viewer, mutations.permissions.comment],
   )
 
   const annotations = useMemo(() => {

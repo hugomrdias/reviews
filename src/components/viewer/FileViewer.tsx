@@ -120,7 +120,7 @@ function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, sear
 
   const { data: threads = NO_THREADS } = useQuery({ ...threadsQuery(owner, repo, docPath), enabled: Boolean(text) })
   const { data: counts = {} } = useQuery(threadCountsQuery(owner, repo))
-  const mutations = useThreadMutations(owner, repo, docPath)
+  const mutations = useThreadMutations(owner, repo, docPath, repoSummary.permissions)
 
   const markdown = text !== null && isMarkdown(docPath)
   const views: Array<NonNullable<ViewerSearch['view']>> =
