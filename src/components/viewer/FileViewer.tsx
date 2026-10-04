@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { CommitPicker } from '@/components/code/CommitPicker'
 import { CompareView } from '@/components/code/CompareView'
 import { SourceView } from '@/components/code/SourceView'
-import { CommentsSheet, groupThreads } from '@/components/comments/CommentsSheet'
+import { CommentsSheet, firstTab, groupThreads, type SheetTab } from '@/components/comments/CommentsSheet'
 import { Composer } from '@/components/comments/Composer'
 import { DocumentComments } from '@/components/comments/DocumentComments'
 import { ThreadCard, type ThreadLocation } from '@/components/comments/ThreadCard'
@@ -140,7 +140,7 @@ function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, sear
   const [activeId, setActiveId] = useState<string | null>(search.thread ?? null)
   const [draft, setDraft] = useState<AnchorData | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [sheetTab, setSheetTab] = useState<'open' | 'outdated' | 'resolved'>('open')
+  const [sheetTab, setSheetTab] = useState<SheetTab>('open')
   const [reveal, setReveal] = useState<string | null>(search.thread ?? null)
   const showMargin = useMediaQuery('(min-width: 1200px)')
 
@@ -161,6 +161,8 @@ function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, sear
     renderedText: view === 'rendered' ? (index?.text ?? null) : null,
   })
   const groups = groupThreads(anchored)
+  // Comments on the page that still need someone: the mobile button's count.
+  const onPageCount = groups.open.length + groups.addressed.length
 
   // Compare view: base commit, its file, and threads placed on it.
   const { data: history = [] } = useQuery({
@@ -366,9 +368,10 @@ function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, sear
           views={views}
           view={view}
           openCount={groups.open.length}
+          addressedCount={groups.addressed.length}
           outdatedCount={groups.outdated.length}
           onOpenComments={() => {
-            setSheetTab(groups.open.length === 0 && groups.outdated.length > 0 ? 'outdated' : 'open')
+            setSheetTab(firstTab(groups))
             setSheetOpen(true)
           }}
           actions={comparePicker}
@@ -454,7 +457,7 @@ function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, sear
         </DrawerVirtualKeyboardProvider>
       </Drawer>
 
-      {!showMargin && view === 'rendered' && groups.open.length > 0 && !mobileDrawerOpen && (
+      {!showMargin && view === 'rendered' && onPageCount > 0 && !mobileDrawerOpen && (
         <Button
           className="fixed right-4 bottom-4 z-30 shadow-lg"
           onClick={() => {
@@ -462,7 +465,7 @@ function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, sear
             setSheetOpen(true)
           }}
         >
-          {groups.open.length === 1 ? '1 comment' : `${groups.open.length} comments`}
+          {onPageCount === 1 ? '1 comment' : `${onPageCount} comments`}
         </Button>
       )}
     </SidebarProvider>

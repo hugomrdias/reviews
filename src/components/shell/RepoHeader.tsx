@@ -18,6 +18,7 @@ interface RepoHeaderProps {
   views: View[]
   view: View
   openCount: number
+  addressedCount: number
   outdatedCount: number
   onOpenComments: () => void
   /** Extra controls for the current view, such as the commit picker. */
@@ -34,6 +35,7 @@ export function RepoHeader({
   views,
   view,
   openCount,
+  addressedCount,
   outdatedCount,
   onOpenComments,
   actions,
@@ -101,6 +103,11 @@ export function RepoHeader({
         <Button variant="ghost" size="sm" onClick={onOpenComments} aria-label="All comments on this file">
           <MessageSquare />
           <span className="tabular-nums">{openCount}</span>
+          {addressedCount > 0 && (
+            <span className="rounded-sm bg-marker px-1 text-xs tabular-nums text-foreground">
+              {addressedCount} addressed
+            </span>
+          )}
           {outdatedCount > 0 && (
             <span className="rounded-sm bg-marker px-1 text-xs tabular-nums text-foreground">
               {outdatedCount} outdated

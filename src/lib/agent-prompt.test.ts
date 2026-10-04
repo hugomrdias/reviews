@@ -47,6 +47,7 @@ function thread(id: string, a: AnchorData, comments: CommentView[], extra: Parti
     status: 'open',
     resolvedBy: null,
     resolvedAt: null,
+    addressed: null,
     author: maya,
     createdAt: 0,
     updatedAt: 0,

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Bot, Check, Copy, GitCompareArrows, History, MoreHorizontal, RotateCcw } from 'lucide-react'
+import { Bot, Check, CheckCheck, Copy, GitCompareArrows, History, MoreHorizontal, RotateCcw } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -17,7 +17,7 @@ import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
 import type { ThreadMutations } from '@/hooks/useThreadMutations'
 import { toSplat } from '@/lib/links'
 import type { SessionUser } from '@/server/auth/session'
-import { canResolve, type Author, type CommentView } from '@/lib/threads'
+import { canResolve, type Author, type CommentView, type ThreadView } from '@/lib/threads'
 import { absoluteTime, relativeTime, shortSha } from '@/lib/time'
 import { cn } from '@/lib/utils'
 import { CommentBody } from './CommentBody'
@@ -156,9 +156,12 @@ export function ThreadCard({
 }: ThreadCardProps) {
   const { thread, state } = anchored
   const resolved = thread.status === 'resolved'
+  const addressed = thread.status === 'addressed'
   const visible = active ? thread.comments : thread.comments.slice(0, 1)
   const hidden = thread.comments.length - visible.length
-  const note = resolved ? null : STATE_NOTE[state]
+  // An addressed thread's text has usually changed: that's the fix, not news.
+  const note = resolved || addressed ? null : STATE_NOTE[state]
+  const setStatus = (status: 'open' | 'resolved') => mutations.setStatus.mutate({ threadId: thread.id, status })
 
   const copyLink = () => {
     const url = new URL(window.location.href)
@@ -176,9 +179,9 @@ export function ThreadCard({
       }}
       className={cn(
         'relative border-l-[3px] py-2.5 pr-3 pl-3.5 font-sans transition-[background-color,box-shadow]',
-        state === 'attached' && !resolved && 'border-l-marker-strong',
-        state === 'edited' && !resolved && 'border-l-marker-edited border-dashed',
-        (state === 'outdated' || state === 'unplaced' || resolved) && 'border-l-border',
+        thread.status === 'open' && state === 'attached' && 'border-l-marker-strong',
+        ((thread.status === 'open' && state === 'edited') || addressed) && 'border-l-marker-edited border-dashed',
+        ((thread.status === 'open' && (state === 'outdated' || state === 'unplaced')) || resolved) && 'border-l-border',
         active ? 'rounded-r-md bg-card shadow-[0_1px_3px_rgb(27_34_48/0.08),0_8px_24px_-12px_rgb(27_34_48/0.18)]' : 'cursor-pointer hover:bg-card/60',
         className,
       )}
@@ -196,6 +199,7 @@ export function ThreadCard({
       )}
 
       {note && <p className="mb-2 text-xs text-muted-foreground">{note}</p>}
+      {thread.status !== 'open' && <AddressedNote thread={thread} location={location} />}
       {resolved && thread.resolvedBy && (
         <p className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
           <Check className="size-3.5" /> Resolved by {thread.resolvedBy.login}
@@ -226,23 +230,57 @@ export function ThreadCard({
             />
           )}
           <div className="flex items-center gap-1">
-            {canResolve(mutations.permissions, thread.author.id, viewer?.id) && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  mutations.setStatus.mutate({ threadId: thread.id, status: resolved ? 'open' : 'resolved' })
-                }
-              >
-                {resolved ? <RotateCcw /> : <Check />}
-                {resolved ? 'Reopen' : 'Resolve'}
-              </Button>
-            )}
+            {canResolve(mutations.permissions, thread.author.id, viewer?.id) &&
+              (addressed ? (
+                <>
+                  <Button size="sm" onClick={() => setStatus('resolved')}>
+                    <Check />
+                    Confirm
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setStatus('open')}>
+                    <RotateCcw />
+                    Reopen
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => setStatus(resolved ? 'open' : 'resolved')}>
+                  {resolved ? <RotateCcw /> : <Check />}
+                  {resolved ? 'Reopen' : 'Resolve'}
+                </Button>
+              ))}
             <ThreadMenu thread={anchored} location={location} onCopyLink={copyLink} />
           </div>
         </div>
       )}
     </article>
+  )
+}
+
+/** "Addressed by hugo in abc1234": who said it's fixed, and a link to the change. */
+function AddressedNote({ thread, location }: { thread: ThreadView; location: ThreadLocation }) {
+  const { addressed } = thread
+  if (!addressed) return null
+  return (
+    <p className="mb-2 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+      <CheckCheck className="size-3.5" /> Addressed by {addressed.by.login}
+      {addressed.sha && (
+        <>
+          {' in '}
+          <Link
+            to="/$owner/$repo/$"
+            params={{ owner: location.owner, repo: location.repo, _splat: toSplat(addressed.sha, location.path) }}
+            search={{ view: 'compare', base: thread.commitSha, thread: thread.id }}
+            className="font-mono text-link hover:underline"
+            title="See the change"
+          >
+            {shortSha(addressed.sha)}
+          </Link>
+        </>
+      )}
+      <time dateTime={new Date(addressed.at).toISOString()} title={absoluteTime(addressed.at)}>
+        {relativeTime(addressed.at)}
+      </time>
+    </p>
   )
 }
 
