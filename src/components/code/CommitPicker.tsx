@@ -41,20 +41,22 @@ export function CommitPicker({ owner, repo, headSha, path, baseSha, threads, onS
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" role="combobox" aria-expanded={open} className="max-w-72 justify-between gap-2">
-          <span className="truncate">
-            {baseSha ? (
-              <>
-                Compared with <span className="font-mono">{shortSha(baseSha)}</span>
-                {label && <span className="text-muted-foreground"> {label.message}</span>}
-              </>
-            ) : (
-              'Choose a commit'
-            )}
-          </span>
-          <ChevronsUpDown className="opacity-60" />
-        </Button>
+      <PopoverTrigger
+        render={
+          <Button variant="outline" size="sm" role="combobox" aria-expanded={open} className="max-w-72 justify-between gap-2" />
+        }
+      >
+        <span className="truncate">
+          {baseSha ? (
+            <>
+              Compared with <span className="font-mono">{shortSha(baseSha)}</span>
+              {label && <span className="text-muted-foreground"> {label.message}</span>}
+            </>
+          ) : (
+            'Choose a commit'
+          )}
+        </span>
+        <ChevronsUpDown className="opacity-60" />
       </PopoverTrigger>
       <PopoverContent className="w-96 p-0" align="end">
         <Command>
