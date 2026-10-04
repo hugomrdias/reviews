@@ -24,6 +24,11 @@ const headDoc = ['# Plan', '', 'Intro added later.', '', 'Ship on **Friday** aft
 let repo: RepoAccess
 let repoId = 100
 
+/** GitHub reads the tools made, as "file <sha> <path>" and "blob <sha>". */
+let reads: string[] = []
+
+const blobOf = (sha: string, path: string) => `blob:${sha}:${path}`
+
 function reader(files: Record<string, Record<string, string>>, commits: string[] = []): tools.RepoReader {
   return {
     access: async (owner, name) => {
@@ -32,8 +37,16 @@ function reader(files: Record<string, Record<string, string>>, commits: string[]
     },
     resolveRef: async (_, ref) => ({ ref, sha: ref === 'main' ? HEAD : ref }),
     file: async (_, sha, path) => {
+      reads.push(`file ${sha} ${path}`)
       const source = files[sha]?.[path]
-      return source === undefined ? null : { source, blobSha: `blob-${sha}` }
+      return source === undefined ? null : { source, blobSha: blobOf(sha, path) }
+    },
+    blob: async (_, blobSha) => {
+      reads.push(`blob ${blobSha}`)
+      for (const [sha, paths] of Object.entries(files)) {
+        for (const [path, source] of Object.entries(paths)) if (blobOf(sha, path) === blobSha) return source
+      }
+      return null
     },
     commit: async (_, sha) => commits.find((c) => c.startsWith(sha)) ?? null,
   }
@@ -47,13 +60,13 @@ function anchor(extra: Partial<AnchorData>): AnchorData {
   return { kind: 'text', quoteExact: '', quotePrefix: '', quoteSuffix: '', textStart: null, textEnd: null, lineStart: null, lineEnd: null, ...extra }
 }
 
-async function thread(a: AnchorData, body: string, path = PATH) {
+async function thread(a: AnchorData, body: string, path = PATH, blobSha: string | null = blobOf(OLD, path)) {
   return store.createThread(getDb(), maya.id, {
     repoId: repo.repoId,
     repoFullName: repo.fullName,
     path,
     commitSha: OLD,
-    blobSha: `blob-${OLD}`,
+    blobSha,
     anchor: a,
     body,
     via: null,
@@ -61,6 +74,7 @@ async function thread(a: AnchorData, body: string, path = PATH) {
 }
 
 beforeEach(async () => {
+  reads = []
   // A new repo per test keeps tests apart in the shared database.
   repoId += 1
   repo = {
@@ -89,6 +103,35 @@ describe('list_threads', () => {
     expect(byId[lines]).toMatchObject({ state: 'attached', lines: { start: 8, end: 8 }, quoteKind: 'source' })
     expect(byId[text].comments).toEqual([expect.objectContaining({ author: 'maya', body: 'Monday instead?', via: null })])
     expect(byId[text].url).toBe(`http://localhost:3000/acme/${repo.name}/main/docs/plan.md?thread=${text}`)
+  })
+
+  it('skips the old version when the quoted lines are found whole', async () => {
+    await thread(anchor({ kind: 'lines', quoteExact: 'make deploy', lineStart: 6, lineEnd: 6 }), 'Use the script.')
+    const [only] = (await tools.listThreads(context(), { repo: repo.fullName })).threads
+    expect(only).toMatchObject({ state: 'attached', lines: { start: 8, end: 8 } })
+    expect(reads).toEqual([`file ${HEAD} ${PATH}`])
+  })
+
+  it('reads the old version by blob when the quoted lines aren’t found whole', async () => {
+    // A quote cut short, as long ones are, doesn't end at a line end: the
+    // lines are followed through a diff against the old version instead.
+    const a = anchor({ kind: 'lines', quoteExact: 'make dep', lineStart: 6, lineEnd: 6 })
+    await thread(a, 'One', PATH)
+    await thread(a, 'Two', PATH)
+    const list = await tools.listThreads(context(), { repo: repo.fullName })
+    expect(list.threads.map((t) => [t.state, t.lines])).toEqual([
+      ['attached', { start: 8, end: 8 }],
+      ['attached', { start: 8, end: 8 }],
+    ])
+    // Once for both threads, and no tree lookup at the old commit.
+    expect(reads).toEqual([`file ${HEAD} ${PATH}`, `blob ${blobOf(OLD, PATH)}`])
+  })
+
+  it('reads the old version through its commit for threads without a blob', async () => {
+    await thread(anchor({ kind: 'lines', quoteExact: 'make dep', lineStart: 6, lineEnd: 6 }), 'Use the script.', PATH, null)
+    const [only] = (await tools.listThreads(context(), { repo: repo.fullName })).threads
+    expect(only).toMatchObject({ state: 'attached', lines: { start: 8, end: 8 } })
+    expect(reads).toEqual([`file ${HEAD} ${PATH}`, `file ${OLD} ${PATH}`])
   })
 
   it('reports text that is gone as outdated', async () => {

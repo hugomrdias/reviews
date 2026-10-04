@@ -69,6 +69,29 @@ export function unchangedLines(oldText: string, newText: string): UnchangedLines
   return () => (map ??= mapUnchangedLines(oldText, newText))
 }
 
+/** The quoted lines found whole in the source, nearest the old position; null when they aren't. */
+function exactLines(source: string, anchor: AnchorData) {
+  const start = anchor.lineStart ?? 1
+  const span = (anchor.lineEnd ?? start) - start
+  const exact = exactMatches(source, anchor.quoteExact).filter(
+    (m) => isLineStart(source, m.start) && isLineEnd(source, m.end),
+  )
+  if (exact.length === 0) return null
+  // Several identical blocks: take the one nearest the old position.
+  const lines = exact.map((m) => lineAt(source, m.start))
+  const nearest = lines.reduce((a, b) => (Math.abs(b - start) < Math.abs(a - start) ? b : a))
+  return { lineStart: nearest, lineEnd: nearest + span }
+}
+
+/**
+ * Whether placing a line comment would use the source it was written on:
+ * only when its blob changed and its quote isn't found whole. Lets callers
+ * skip fetching old versions they don't need.
+ */
+export function needsOldSource(source: string, anchor: AnchorData, sameBlob: boolean) {
+  return anchor.kind === 'lines' && !sameBlob && exactLines(source, anchor) === null
+}
+
 /** Places a line comment in the current source. `unchanged` maps the lines of the thread's version, when it differs. */
 export function anchorLines(
   source: string,
@@ -80,18 +103,11 @@ export function anchorLines(
   const end = anchor.lineEnd ?? start
   if (sameBlob) return { state: 'attached', lineStart: start, lineEnd: end }
 
+  const exact = exactLines(source, anchor)
+  if (exact) return { state: 'attached', ...exact }
+
   const quote = anchor.quoteExact
   const span = end - start
-  const exact = exactMatches(source, quote).filter(
-    (m) => isLineStart(source, m.start) && isLineEnd(source, m.end),
-  )
-  if (exact.length > 0) {
-    // Several identical blocks: take the one nearest the old position.
-    const lines = exact.map((m) => lineAt(source, m.start))
-    const nearest = lines.reduce((a, b) => (Math.abs(b - start) < Math.abs(a - start) ? b : a))
-    return { state: 'attached', lineStart: nearest, lineEnd: nearest + span }
-  }
-
   if (unchanged) {
     const map = unchanged()
     const mapped = Array.from({ length: span + 1 }, (_, i) => map.get(start + i))

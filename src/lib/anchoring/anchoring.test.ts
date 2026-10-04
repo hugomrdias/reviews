@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AnchorData } from '../threads'
-import { anchorLines, mapUnchangedLines, quoteLines, unchangedLines } from './line-anchor'
+import { anchorLines, mapUnchangedLines, needsOldSource, quoteLines, unchangedLines } from './line-anchor'
 import { anchorText } from './text-anchor'
 
 const original =
@@ -104,6 +104,47 @@ describe('anchorLines', () => {
   it('marks deleted lines as outdated', () => {
     const deleted = ['# Title', '', 'gamma', '', 'end'].join('\n')
     expect(anchorLines(deleted, anchor, false, unchangedLines(oldSource, deleted))).toEqual({ state: 'outdated' })
+  })
+})
+
+describe('needsOldSource', () => {
+  const oldSource = ['# Title', '', 'alpha', 'beta', 'gamma', '', 'end'].join('\n')
+  const inserted = ['# Title', '', 'new line', 'alpha', 'beta', 'gamma', '', 'end'].join('\n')
+  const lines = (quoteExact: string): AnchorData => ({
+    kind: 'lines',
+    quoteExact,
+    quotePrefix: '',
+    quoteSuffix: '',
+    textStart: null,
+    textEnd: null,
+    lineStart: 3,
+    lineEnd: 4,
+  })
+
+  it('is false when the blob is unchanged or the lines are found whole', () => {
+    expect(needsOldSource(inserted, lines('alpha\nbeta'), true)).toBe(false)
+    expect(needsOldSource(inserted, lines('alpha\nbeta'), false)).toBe(false)
+  })
+
+  it('is false for page comments', () => {
+    expect(needsOldSource(inserted, { ...lines('alph'), kind: 'text' }, false)).toBe(false)
+  })
+
+  it('is true when the quote isn’t found as whole lines', () => {
+    expect(needsOldSource(inserted, lines('alpha\nbet'), false)).toBe(true)
+    expect(needsOldSource(inserted, lines('alpha\nbetas'), false)).toBe(true)
+  })
+
+  it('agrees with anchorLines: the old source changes nothing when it is false', () => {
+    for (const quote of ['alpha\nbeta', 'alpha\nbet', 'alpha\nbetas']) {
+      const anchor = lines(quote)
+      const without = anchorLines(inserted, anchor, false)
+      const withOld = anchorLines(inserted, anchor, false, unchangedLines(oldSource, inserted))
+      if (!needsOldSource(inserted, anchor, false)) expect(withOld).toEqual(without)
+    }
+    // A cut-short quote is where the old source matters: it follows the lines exactly.
+    expect(anchorLines(inserted, lines('alpha\nbet'), false)).toMatchObject({ state: 'edited' })
+    expect(anchorLines(inserted, lines('alpha\nbet'), false, unchangedLines(oldSource, inserted))).toEqual({ state: 'attached', lineStart: 4, lineEnd: 5 })
   })
 })
 

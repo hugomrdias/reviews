@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { comment, quoteBlock, threadLocation } from '@/lib/agent-prompt'
-import { unchangedLines, type UnchangedLines } from '@/lib/anchoring/line-anchor'
+import { needsOldSource, unchangedLines, type UnchangedLines } from '@/lib/anchoring/line-anchor'
 import { lazyPageText, placeThread, type Placement } from '@/lib/anchoring/place'
 import { toSplat } from '@/lib/links'
 import { encodePath } from '@/lib/paths'
@@ -24,6 +24,8 @@ export interface RepoReader {
   resolveRef(repo: RepoAccess, ref: string): Promise<{ ref: string; sha: string }>
   /** A text file at a commit, or null when it isn't there or isn't text. */
   file(repo: RepoAccess, sha: string, path: string): Promise<{ source: string; blobSha: string } | null>
+  /** A text blob by its SHA, or null when it isn't there or isn't text. */
+  blob(repo: RepoAccess, blobSha: string): Promise<string | null>
   /** The full SHA of a commit GitHub knows, or null. */
   commit(repo: RepoAccess, sha: string): Promise<string | null>
 }
@@ -110,22 +112,28 @@ async function placeOnFile(ctx: ToolContext, repo: RepoAccess, sha: string, path
   const file = await ctx.github.file(repo, sha, path)
   if (!file) return threads.map((t) => [t, { state: 'outdated', lines: null }] as const)
   const page = lazyPageText(path, file.source)
-  // Line comments on another version follow their lines through a diff, fetched and run once per commit.
+  // The version a line comment was written on, fetched only when its lines
+  // aren't found whole: by blob, or through the commit's tree for older
+  // threads without one. Diffed once per version, shared by its threads.
   const diffs = new Map<string, Promise<UnchangedLines | undefined>>()
-  const diffFrom = (commitSha: string) => {
-    let found = diffs.get(commitSha)
+  const diffFrom = (thread: ThreadView) => {
+    const key = thread.blobSha ? `blob:${thread.blobSha}` : `commit:${thread.commitSha}`
+    let found = diffs.get(key)
     if (!found) {
-      found = ctx.github.file(repo, commitSha, path).then((old) => (old ? unchangedLines(old.source, file.source) : undefined))
-      diffs.set(commitSha, found)
+      const old = thread.blobSha
+        ? ctx.github.blob(repo, thread.blobSha)
+        : ctx.github.file(repo, thread.commitSha, path).then((f) => f?.source ?? null)
+      found = old.then((source) => (source !== null ? unchangedLines(source, file.source) : undefined))
+      diffs.set(key, found)
     }
     return found
   }
   return Promise.all(
     threads.map(async (thread) => {
-      const lineThreadOnOtherVersion = thread.anchor.kind === 'lines' && thread.blobSha !== file.blobSha
+      const needsOld = needsOldSource(file.source, thread.anchor, thread.blobSha === file.blobSha)
       const placement = placeThread(thread, file, {
         page,
-        unchangedLines: lineThreadOnOtherVersion ? await diffFrom(thread.commitSha) : undefined,
+        unchangedLines: needsOld ? await diffFrom(thread) : undefined,
       })
       return [thread, placement] as const
     }),

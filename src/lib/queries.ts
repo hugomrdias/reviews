@@ -1,7 +1,7 @@
 import { queryOptions } from '@tanstack/react-query'
 import { listConnectedAgents } from '@/functions/agents'
 import { getThreadCounts, listThreads } from '@/functions/comments'
-import { fetchFile, fetchFileCommits, fetchRepos, fetchTree, resolveLocation } from '@/functions/content'
+import { fetchBlobText, fetchFile, fetchFileCommits, fetchRepos, fetchTree, resolveLocation } from '@/functions/content'
 import { getViewer } from '@/functions/viewer'
 
 // Anything keyed by a commit or blob SHA never changes, so it never goes stale.
@@ -37,6 +37,13 @@ export const fileQuery = (owner: string, repo: string, sha: string, path: string
   queryOptions({
     queryKey: ['file', owner, repo, sha, path],
     queryFn: () => fetchFile({ data: { owner, repo, sha, path } }),
+    staleTime: Infinity,
+  })
+
+export const blobTextQuery = (owner: string, repo: string, blobSha: string) =>
+  queryOptions({
+    queryKey: ['blob', owner, repo, blobSha],
+    queryFn: () => fetchBlobText({ data: { owner, repo, blobSha } }),
     staleTime: Infinity,
   })
 
