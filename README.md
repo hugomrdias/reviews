@@ -11,12 +11,11 @@ Built with TanStack Start, React, [@pierre/trees](https://trees.software) for th
 
 ## Run it locally
 
-Requirements: Node 22.12 or later and pnpm 12.
+Requirements: pnpm 12. It installs the pinned Node 24 for the project's scripts (`devEngines` in `package.json`).
 
 1. Register a GitHub App for development (see [GitHub App](#github-app)), using `http://localhost:3000/auth/callback` as the callback URL.
-2. Put the app's client ID and slug in `wrangler.jsonc` under `vars`.
-3. Copy `.dev.vars.example` to `.dev.vars`. Fill in the client secret and a session secret (`openssl rand -base64 32`).
-4. Install, create the local database, and start:
+2. Copy `.dev.vars.example` to `.dev.vars`. Fill in the app's client ID, slug and client secret, and a session secret (`openssl rand -base64 32`). The vars in `wrangler.jsonc` are production values; `.dev.vars` overrides them locally.
+3. Install, create the local database, and start:
 
 ```bash
 pnpm install
@@ -42,20 +41,37 @@ Create the app at **GitHub → Settings → Developer settings → GitHub Apps �
 | Webhook | Off |
 | Repository permissions | Contents: Read-only, Metadata: Read-only |
 | Where can this app be installed | Any account |
+| Logo | `public/icon-512.png`, with badge background `#1b2230` |
 
 Generate a client secret. The app doesn't need a private key.
+
+The dev app also serves pull request Previews and needs one more callback URL. See [Signing in on a Preview](#signing-in-on-a-preview).
 
 A person sees a repository only when two things are true: their GitHub account can read it, and the app is installed on the repository's owner with that repository selected. When either isn't true, the app shows what's missing and links to the fix.
 
 ## Deploy to Cloudflare
 
-1. Create the database, and put the printed `database_id` in `wrangler.jsonc`:
+GitHub Actions deploys (`.github/workflows/ci.yml`). Once the checks pass:
+
+- **Production.** Each push to `main` applies D1 migrations and deploys to https://reviews.hugodias.me.
+- **Pull request Previews.** Each pull request from this repository gets a [Worker Preview](https://developers.cloudflare.com/workers/previews/) at `https://pr-<number>-github-reviews.hugomrdias.workers.dev`. The URL is posted on the pull request, and the Preview is deleted when the pull request closes. Previews use the dev GitHub App and share the `github-reviews-preview` database, so they never touch production data. Pull requests from forks get no Preview.
+
+The Workers Paid plan is recommended: rendering large documents can exceed the free plan's 10 ms CPU limit.
+
+### One-time setup
+
+1. Create both databases. Put the production `database_id` in `d1_databases` in `wrangler.jsonc`, and the preview one in `previews.d1_databases` and in `wrangler.preview-migrations.jsonc`:
 
    ```bash
    pnpm exec wrangler d1 create github-reviews
    ```
 
-2. Set the secrets:
+   ```bash
+   pnpm exec wrangler d1 create github-reviews-preview
+   ```
+
+2. In `wrangler.jsonc`, set `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_SLUG` under `vars` to the production GitHub App.
+3. Set the production secrets, from the production GitHub App:
 
    ```bash
    pnpm exec wrangler secret put GITHUB_APP_CLIENT_SECRET
@@ -65,13 +81,41 @@ A person sees a repository only when two things are true: their GitHub account c
    pnpm exec wrangler secret put SESSION_SECRET
    ```
 
-3. In `wrangler.jsonc`, set `APP_URL`, `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_SLUG` to the production values, and uncomment `routes` with your custom domain. The Cache API, which caches files and images, doesn't run on `*.workers.dev`.
-4. In the Cloudflare dashboard, open **Workers & Pages → Create → Import a repository**, and pick this repository. Use these build settings:
-   - Build command: `pnpm run build`
-   - Deploy command: `pnpm run db:migrate:remote && pnpm exec wrangler deploy`
-   - Environment variable: `NODE_VERSION=22`
+4. Set the Preview secrets, from the dev GitHub App. Each new Preview copies them when it's created:
 
-Every push to the main branch then deploys. The Workers Paid plan is recommended: rendering large documents can exceed the free plan's 10 ms CPU limit.
+   ```bash
+   pnpm exec wrangler preview base-config secret put GITHUB_APP_CLIENT_SECRET
+   ```
+
+   ```bash
+   pnpm exec wrangler preview base-config secret put SESSION_SECRET
+   ```
+
+5. Create a Cloudflare API token from the **Edit Cloudflare Workers** template, and add **Account → D1 → Edit**. Scope the zone resources to `hugodias.me`. Add it and your account ID to the repository's Actions secrets:
+
+   ```bash
+   gh secret set CLOUDFLARE_API_TOKEN
+   ```
+
+   ```bash
+   gh secret set CLOUDFLARE_ACCOUNT_ID
+   ```
+
+### Signing in on a Preview
+
+Previews sign in with the dev GitHub App. Add a second callback URL to it, next to the localhost one, and turn on **Allow wildcard matching** for that URL only:
+
+```
+https://hugomrdias.workers.dev/auth/callback
+```
+
+With wildcard matching, GitHub accepts any subdomain of the callback URL's host, so this one URL covers every Preview, such as `https://pr-3-github-reviews.hugomrdias.workers.dev/auth/callback`. It also lets any other Worker on the `hugomrdias.workers.dev` subdomain receive the dev app's authorization codes. That's acceptable for the dev app, but keep wildcard matching off on the production app.
+
+The Setup URL can't use a wildcard, so the dev app's stays at `http://localhost:3000/github/installed`. After you install or change the app from a Preview, GitHub sends you to localhost. Go back to the Preview tab and reload: the new repositories show up, because the Cache API doesn't run on `*.workers.dev`, so nothing is cached there.
+
+### Migrations on Previews
+
+All Previews share one database, so a pull request's migrations reach it before the pull request merges. If a migration would break other open Previews, give that branch its own database: change `database_id` in both `previews.d1_databases` and `wrangler.preview-migrations.jsonc`.
 
 ## Scripts
 
@@ -84,6 +128,7 @@ Every push to the main branch then deploys. The Workers Paid plan is recommended
 | `pnpm db:generate` | New migration from `src/server/db/schema.ts` |
 | `pnpm db:migrate:local` / `db:migrate:remote` | Apply migrations |
 | `pnpm cf-typegen` | Regenerate binding types after changing `wrangler.jsonc` |
+| `scripts/icons.sh` | Regenerate the favicon and app icons from `public/logo.svg`, and the link-preview card from `scripts/og-image.html` (needs ImageMagick 7 and Chrome) |
 
 ## How it fits together
 

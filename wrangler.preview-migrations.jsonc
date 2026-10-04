@@ -1,0 +1,14 @@
+// Only for applying migrations to the database that pull request Previews share.
+// Keep database_id in sync with previews.d1_databases in wrangler.jsonc.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "github-reviews",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "github-reviews-preview",
+      "database_id": "ecc0433a-c738-4097-80f1-945608c3ad4e",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

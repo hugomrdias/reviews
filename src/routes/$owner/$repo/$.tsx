@@ -8,9 +8,9 @@ import { viewerSearch } from '@/lib/viewer-search'
 export const Route = createFileRoute('/$owner/$repo/$')({
   validateSearch: viewerSearch,
   beforeLoad: ({ context, location }) => {
-    if (!context.viewer) {
-      throw redirect({ href: `/auth/login?returnTo=${encodeURIComponent(location.href)}`, reloadDocument: true })
-    }
+    // The welcome page, not straight to GitHub: link previews fetch signed out,
+    // and should show the app's card, not GitHub's sign-in page.
+    if (!context.viewer) throw redirect({ to: '/', search: { returnTo: location.href } })
   },
   loader: async ({ context: { queryClient }, params }) => {
     const { owner, repo } = params
