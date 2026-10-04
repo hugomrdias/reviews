@@ -1,87 +1,172 @@
+import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
+import { z } from 'zod'
+import { RepoLauncher } from '@/components/home/RepoLauncher'
+import { UserMenu } from '@/components/shell/UserMenu'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { reposQuery } from '@/lib/queries'
+import type { SessionUser } from '@/server/auth/session'
 
-export const Route = createFileRoute('/')({ component: App })
+export const Route = createFileRoute('/')({
+  validateSearch: z.object({
+    signin: z.enum(['failed', 'expired', 'cancelled']).optional(),
+    // Where to go after signing in. Same-site paths only; /auth/login checks again.
+    returnTo: z
+      .string()
+      .max(2048)
+      .refine((v) => v.startsWith('/') && !v.startsWith('//') && !v.startsWith('/\\'))
+      .optional()
+      .catch(undefined),
+  }),
+  loader: ({ context }) => {
+    if (context.viewer) void context.queryClient.prefetchQuery(reposQuery())
+  },
+  component: Home,
+})
 
-function App() {
+function Home() {
+  const { viewer } = Route.useRouteContext()
+  const { signin, returnTo } = Route.useSearch()
+  return viewer ? <Repositories viewer={viewer} /> : <Welcome signin={signin} returnTo={returnTo} />
+}
+
+function GitHubMark() {
   return (
-    <main className="page-wrap px-4 pb-8 pt-14">
-      <section className="island-shell rise-in relative overflow-hidden rounded-[2rem] px-6 py-10 sm:px-10 sm:py-14">
-        <div className="pointer-events-none absolute -left-20 -top-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(79,184,178,0.32),transparent_66%)]" />
-        <div className="pointer-events-none absolute -bottom-20 -right-20 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(47,106,74,0.18),transparent_66%)]" />
-        <p className="island-kicker mb-3">TanStack Start Base Template</p>
-        <h1 className="display-title mb-5 max-w-3xl text-4xl leading-[1.02] font-bold tracking-tight text-[var(--sea-ink)] sm:text-6xl">
-          Start simple, ship quickly.
-        </h1>
-        <p className="mb-8 max-w-2xl text-base text-[var(--sea-ink-soft)] sm:text-lg">
-          This base starter intentionally keeps things light: two routes, clean
-          structure, and the essentials you need to build from scratch.
+    <svg viewBox="0 0 16 16" aria-hidden fill="currentColor">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+    </svg>
+  )
+}
+
+/** The idea in one picture: a passage marked in the text, its note in the margin. */
+function Specimen() {
+  return (
+    <div aria-hidden className="relative grid grid-cols-[minmax(0,1fr)_13rem] gap-6 select-none sm:gap-8">
+      <div className="doc text-[0.9375rem] leading-[1.75] sm:text-base">
+        <h3 className="!mt-0 !mb-2 !text-lg">Release process</h3>
+        <p className="!mb-0">
+          Deploys run nightly. <mark className="rounded-[2px] bg-marker-strong px-0.5 text-inherit">The release train
+          leaves at 9am UTC</mark> and anything merged after that waits a day. Hotfixes skip the train but need two
+          approvals.
         </p>
-        <div className="flex flex-wrap gap-3">
-          <a
-            href="/about"
-            className="rounded-full border border-[rgba(50,143,151,0.3)] bg-[rgba(79,184,178,0.14)] px-5 py-2.5 text-sm font-semibold text-[var(--lagoon-deep)] no-underline transition hover:-translate-y-0.5 hover:bg-[rgba(79,184,178,0.24)]"
-          >
-            About This Starter
-          </a>
-          <a
-            href="https://tanstack.com/router"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-full border border-[rgba(23,58,64,0.2)] bg-white/50 px-5 py-2.5 text-sm font-semibold text-[var(--sea-ink)] no-underline transition hover:-translate-y-0.5 hover:border-[rgba(23,58,64,0.35)]"
-          >
-            Router Guide
+      </div>
+      <div className="mt-9 self-start border-l-[3px] border-l-marker-strong bg-card py-2.5 pr-3 pl-3 text-left shadow-[0_8px_24px_-12px_rgb(27_34_48/0.25)]">
+        <p className="text-xs">
+          <span className="font-semibold">maya</span> <span className="text-muted-foreground">2 hr. ago</span>
+        </p>
+        <p className="mt-1 text-sm leading-snug">Most of the team is in Lisbon now. Could it leave at 10?</p>
+      </div>
+    </div>
+  )
+}
+
+const SIGNIN_MESSAGES = {
+  expired: 'That sign-in link expired. Sign in again.',
+  failed: "GitHub didn't complete the sign-in. Try again.",
+} as const
+
+function Welcome({ signin, returnTo }: { signin?: 'failed' | 'expired' | 'cancelled'; returnTo?: string }) {
+  const loginHref = returnTo ? `/auth/login?returnTo=${encodeURIComponent(returnTo)}` : '/auth/login'
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-6xl flex-col px-6 py-10 md:py-16">
+      <p className="flex items-center gap-2 text-sm font-semibold">
+        <span className="inline-block h-3 w-5 rounded-[2px] bg-marker-strong" aria-hidden />
+        Reviews
+      </p>
+
+      <div className="grid flex-1 items-center gap-14 py-14 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-24">
+        <div className="space-y-6">
+          <h1 className="font-serif text-4xl leading-[1.1] font-semibold tracking-tight text-balance md:text-5xl">
+            Comment on the docs in your repos
+          </h1>
+          <p className="max-w-prose text-lg leading-relaxed text-muted-foreground">
+            Read a repository's markdown the way GitHub renders it, select any passage, and leave a note for your
+            team. Notes live here, never in the repo.
+          </p>
+          {signin === 'cancelled' ? (
+            <Alert>
+              <AlertDescription>
+                Sign-in was cancelled, so nothing was shared with Reviews.
+                {returnTo && (
+                  <>
+                    {' '}
+                    Sign in to open <span className="font-medium break-all text-foreground">{returnTo.slice(1)}</span>.
+                  </>
+                )}
+              </AlertDescription>
+            </Alert>
+          ) : signin ? (
+            <Alert variant="destructive">
+              <AlertDescription>{SIGNIN_MESSAGES[signin]}</AlertDescription>
+            </Alert>
+          ) : null}
+          <div className="space-y-3">
+            <Button asChild size="lg">
+              <a href={loginHref}>
+                <GitHubMark /> {signin === 'cancelled' ? 'Try again' : 'Sign in with GitHub'}
+              </a>
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              People see a repository, and its comments, only if their GitHub account can read it.
+            </p>
+          </div>
+        </div>
+        <Specimen />
+      </div>
+    </main>
+  )
+}
+
+function Repositories({ viewer }: { viewer: SessionUser }) {
+  const { data: repos, isLoading, isError } = useQuery(reposQuery())
+
+  return (
+    <div className="min-h-dvh">
+      <header className="flex items-center justify-between border-b px-4 py-2 md:px-8">
+        <p className="flex items-center gap-2 text-sm font-semibold">
+          <span className="inline-block h-3 w-5 rounded-[2px] bg-marker-strong" aria-hidden />
+          Reviews
+        </p>
+        <UserMenu viewer={viewer} />
+      </header>
+
+      <main className="mx-auto max-w-3xl px-4 pt-12 pb-24 md:px-8">
+        <div className="mb-5 flex items-baseline justify-between gap-4">
+          <h1 className="font-serif text-3xl font-semibold tracking-tight">Open a repository</h1>
+          <a href="/github/install" className="shrink-0 text-sm text-link hover:underline">
+            Add repositories
           </a>
         </div>
-      </section>
 
-      <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          [
-            'Type-Safe Routing',
-            'Routes and links stay in sync across every page.',
-          ],
-          [
-            'Server Functions',
-            'Call server code from your UI without creating API boilerplate.',
-          ],
-          [
-            'Streaming by Default',
-            'Ship progressively rendered responses for faster experiences.',
-          ],
-          [
-            'Tailwind Native',
-            'Design quickly with utility-first styling and reusable tokens.',
-          ],
-        ].map(([title, desc], index) => (
-          <article
-            key={title}
-            className="island-shell feature-card rise-in rounded-2xl p-5"
-            style={{ animationDelay: `${index * 90 + 80}ms` }}
-          >
-            <h2 className="mb-2 text-base font-semibold text-[var(--sea-ink)]">
-              {title}
-            </h2>
-            <p className="m-0 text-sm text-[var(--sea-ink-soft)]">{desc}</p>
-          </article>
-        ))}
-      </section>
-
-      <section className="island-shell mt-8 rounded-2xl p-6">
-        <p className="island-kicker mb-2">Quick Start</p>
-        <ul className="m-0 list-disc space-y-2 pl-5 text-sm text-[var(--sea-ink-soft)]">
-          <li>
-            Edit <code>src/routes/index.tsx</code> to customize the home page.
-          </li>
-          <li>
-            Update <code>src/components/Header.tsx</code> and{' '}
-            <code>src/components/Footer.tsx</code> for brand links.
-          </li>
-          <li>
-            Add routes in <code>src/routes</code> and tweak visual tokens in{' '}
-            <code>src/styles.css</code>.
-          </li>
-        </ul>
-      </section>
-    </main>
+        {isLoading ? (
+          <div className="space-y-2 rounded-xl border bg-card p-4">
+            <Skeleton className="h-10 w-full" />
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-11 w-full" />
+            ))}
+          </div>
+        ) : isError ? (
+          <p className="text-muted-foreground">Your repositories didn't load. Refresh the page to try again.</p>
+        ) : (
+          <div className="space-y-6">
+            <RepoLauncher repos={repos ?? []} viewerLogin={viewer.login} />
+            {repos?.length === 0 && (
+              <div className="rounded-xl border border-dashed p-6">
+                <p className="font-medium">No repositories shared yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Install the Reviews GitHub App on your account or an organization, and choose which repositories
+                  to share. You can still open any public repository by pasting its link above.
+                </p>
+                <Button asChild className="mt-4">
+                  <a href="/github/install">Install the GitHub App</a>
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
   )
 }

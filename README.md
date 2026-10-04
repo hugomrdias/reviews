@@ -1,200 +1,96 @@
-Welcome to your new TanStack Start app!
+# Reviews
 
-# Getting Started
+Read the markdown in a GitHub repository the way GitHub renders it, select any passage, and leave a comment for your team. Comments live in this app's database, never in the repository.
 
-To run this application:
+- **Access follows GitHub.** People sign in with GitHub and see a repository, and its comments, only if their account can read it.
+- **Links stay in the app.** Relative links between files open here, not on github.com. Images in private repositories load through the app.
+- **Comments survive edits.** Each comment remembers the quoted text and its surroundings. When the file changes, the comment follows the text. If the text was reworded, the comment is marked as edited. If the text was removed, the comment is marked as outdated, and you can still open the file as it was or see what changed.
+- **Three views per file.** *Page* shows rendered markdown with notes in the margin. *Source* shows the raw file, where you comment on lines. *Changes* shows a diff between two commits, with comments on both sides.
+
+Built with TanStack Start, React, [@pierre/trees](https://trees.software) for the file tree, [@pierre/diffs](https://diffs.com) for code, source and diffs, and shadcn/ui. It runs on Cloudflare Workers, with comments stored in D1.
+
+## Run it locally
+
+Requirements: Node 22.12 or later and pnpm 12.
+
+1. Register a GitHub App for development (see [GitHub App](#github-app)), using `http://localhost:3000/auth/callback` as the callback URL.
+2. Put the app's client ID and slug in `wrangler.jsonc` under `vars`.
+3. Copy `.dev.vars.example` to `.dev.vars`. Fill in the client secret and a session secret (`openssl rand -base64 32`).
+4. Install, create the local database, and start:
 
 ```bash
 pnpm install
+pnpm db:migrate:local
 pnpm dev
 ```
 
-# Building For Production
+Open http://localhost:3000.
 
-To build this application for production:
+To work on the viewer without signing in, open http://localhost:3000/dev/preview. It shows a fixture document with comments in every state. The route only exists in development.
 
-```bash
-pnpm build
-```
+## GitHub App
 
-## Styling
+Create the app at **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**. Use one app for development and another for production, so the production secret never sits on a laptop.
 
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
+| Setting | Value |
+|---|---|
+| Callback URL | `https://<your domain>/auth/callback` |
+| Expire user authorization tokens | On |
+| Request user authorization (OAuth) during installation | Off |
+| Setup URL | `https://<your domain>/github/installed` |
+| Redirect on update | On |
+| Webhook | Off |
+| Repository permissions | Contents: Read-only, Metadata: Read-only |
+| Where can this app be installed | Any account |
 
-### Removing Tailwind CSS
+Generate a client secret. The app doesn't need a private key.
 
-If you prefer not to use Tailwind CSS:
+A person sees a repository only when two things are true: their GitHub account can read it, and the app is installed on the repository's owner with that repository selected. When either isn't true, the app shows what's missing and links to the fix.
 
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Remove `@tailwindcss/vite` and `tailwindcss` from `package.json`
+## Deploy to Cloudflare
 
+1. Create the database, and put the printed `database_id` in `wrangler.jsonc`:
 
-## Deploy to Cloudflare Workers
+   ```bash
+   pnpm exec wrangler d1 create github-reviews
+   ```
 
-This project uses the Cloudflare Vite plugin (configured in `vite.config.ts`) and `wrangler.jsonc`:
+2. Set the secrets:
 
-1. Install Wrangler: `npm install -g wrangler`
-2. Authenticate: `wrangler login`
-3. Deploy: `npx wrangler deploy`
+   ```bash
+   pnpm exec wrangler secret put GITHUB_APP_CLIENT_SECRET
+   ```
 
-For production env vars, run `wrangler secret put MY_VAR` for each secret listed in `.env.example`. Public (non-secret) vars go in `wrangler.jsonc` under `vars`.
+   ```bash
+   pnpm exec wrangler secret put SESSION_SECRET
+   ```
 
-KV, D1, R2, and Durable Object bindings are configured in `wrangler.jsonc` — see https://developers.cloudflare.com/workers/wrangler/configuration/.
+3. In `wrangler.jsonc`, set `APP_URL`, `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_SLUG` to the production values, and uncomment `routes` with your custom domain. The Cache API, which caches files and images, doesn't run on `*.workers.dev`.
+4. In the Cloudflare dashboard, open **Workers & Pages → Create → Import a repository**, and pick this repository. Use these build settings:
+   - Build command: `pnpm run build`
+   - Deploy command: `pnpm run db:migrate:remote && pnpm exec wrangler deploy`
+   - Environment variable: `NODE_VERSION=22`
 
+Every push to the main branch then deploys. The Workers Paid plan is recommended: rendering large documents can exceed the free plan's 10 ms CPU limit.
 
+## Scripts
 
-## Routing
+| Command | What it does |
+|---|---|
+| `pnpm dev` | Dev server on port 3000, with the local D1 database |
+| `pnpm build` | Production build |
+| `pnpm test` | Unit tests |
+| `pnpm typecheck` | TypeScript check |
+| `pnpm db:generate` | New migration from `src/server/db/schema.ts` |
+| `pnpm db:migrate:local` / `db:migrate:remote` | Apply migrations |
+| `pnpm cf-typegen` | Regenerate binding types after changing `wrangler.jsonc` |
 
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
+## How it fits together
 
-### Adding A Route
+- `src/routes/$owner/$repo/$.tsx` is the viewer. The URL keeps the branch name, but every read is pinned to the commit it resolves to, so cached data never goes stale.
+- `src/server/` runs only on the Worker. It holds GitHub access checks, sessions (tokens encrypted in D1, with refresh handled safely when requests race), file reads and the comment store.
+- `src/functions/` holds the server functions the UI calls. Every one checks that the signed-in user can read the repository.
+- `src/lib/anchoring/` places comments on the current version of a file. Text comments are matched by quote and context. Line comments are followed through a line diff.
+- Code highlighting runs only in the browser. The Worker never bundles Shiki.
 
-To add a new route to your application just add a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
-```
-
-Then anywhere in your JSX you can use it like so:
-
-```tsx
-<Link to="/about">About</Link>
-```
-
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-})
-```
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-## Server Functions
-
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from '@tanstack/react-start'
-
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
-
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState('')
-  
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
-  
-  return <div>Server time: {time}</div>
-}
-```
-
-## API Routes
-
-You can create API routes by using the `server` property in your route definitions:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
-
-export const Route = createFileRoute('/api/hello')({
-  server: {
-    handlers: {
-      GET: () => json({ message: 'Hello, World!' }),
-    },
-  },
-})
-```
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/people')({
-  loader: async () => {
-    const response = await fetch('https://swapi.dev/api/people')
-    return response.json()
-  },
-  component: PeopleComponent,
-})
-
-function PeopleComponent() {
-  const data = Route.useLoaderData()
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  )
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+Dependency versions are pinned exactly. TanStack Start is a release candidate and @pierre/trees is in beta, so upgrade them deliberately.

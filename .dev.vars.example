@@ -1,0 +1,4 @@
+# Copy to .dev.vars and fill in. Values come from your dev GitHub App.
+GITHUB_APP_CLIENT_SECRET=
+# 32+ random bytes, base64. Generate with: openssl rand -base64 32
+SESSION_SECRET=
