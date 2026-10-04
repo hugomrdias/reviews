@@ -68,6 +68,8 @@ export async function resolveLocation(
   const base = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`
   const key = `loc:${owner}/${repo}:${clean || defaultBranch}`
 
+  // Up to five minutes stale while it refreshes: right after a push, a branch
+  // can show its previous commit for one more request.
   return cached(key, 60, async () => {
     if (!clean) {
       return { ref: defaultBranch, sha: await commitShaFor(token, base, defaultBranch), path: '' }
@@ -98,5 +100,5 @@ export async function resolveLocation(
       }
       throw error
     }
-  })
+  }, { staleSeconds: 5 * 60 })
 }

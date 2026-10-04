@@ -34,6 +34,14 @@ interface RepoResponse {
  * also have to be in one of the user's installations. Private repos already
  * 404 when the app isn't installed on them.
  */
+/**
+ * Access checks are fresh for a minute, then served for up to five more while
+ * they refresh in the background, so an expired check doesn't put GitHub's
+ * latency in front of the page. Revoked access can last that long; a refresh
+ * that fails drops the entry.
+ */
+const ACCESS_CACHE = { staleSeconds: 5 * 60 }
+
 export function requireRepoAccess(session: ActiveSession, owner: string, repo: string) {
   const key = `repo-access:${session.user.id}:${owner.toLowerCase()}/${repo.toLowerCase()}`
   return cached<RepoAccess>(key, 60, async () => {
@@ -61,7 +69,7 @@ export function requireRepoAccess(session: ActiveSession, owner: string, repo: s
       ownerId: data.owner.id,
       permissions: { comment: maintainer || Boolean(role?.push), moderate: maintainer },
     }
-  })
+  }, ACCESS_CACHE)
 }
 
 interface Installation {
@@ -99,7 +107,7 @@ export function listInstallations(session: ActiveSession) {
       type: i.account.type,
       selection: i.repository_selection,
     }))
-  })
+  }, ACCESS_CACHE)
 }
 
 export interface InstallationRepo {
@@ -132,7 +140,7 @@ export function listInstallationRepos(session: ActiveSession, installationId: nu
     const pages = Math.min(10, Math.ceil(first.total_count / 100))
     const rest = await Promise.all(Array.from({ length: Math.max(0, pages - 1) }, (_, i) => page(i + 2)))
     return [first, ...rest].flatMap((p) => p.repositories)
-  })
+  }, ACCESS_CACHE)
 }
 
 /** Whether the app is installed on the repo, in an installation the user can see. */
