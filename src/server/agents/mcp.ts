@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { bodySchema, pathSchema } from '@/functions/schemas'
 import { THREAD_STATUSES } from '@/lib/threads'
 import { getDb } from '../db/client'
+import { tagInvocation } from '../tracing'
 import { AuthError, NotFoundError, RateLimitError } from '../github/client'
 import { repoReader } from './github'
 import { READ, WRITE, type AgentProps } from './grant'
@@ -176,6 +177,12 @@ async function needsWrite(request: Request, writeTools: Set<string>) {
 export const mcpHandler = {
   async fetch(request: Request, env: Env, ctx: OAuthResourceContext<AgentProps>) {
     const props = ctx.props
+    tagInvocation({
+      'user.id': props.userId,
+      'user.name': props.login,
+      'agent.name': props.clientName,
+      'agent.client_id': ctx.auth.clientId,
+    })
     const writeTools = new Set<string>()
     const server = buildServer(
       {
