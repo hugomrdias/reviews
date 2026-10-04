@@ -10,7 +10,10 @@
     "redact_query_string": true,
     "logs": { "enabled": true, "invocation_logs": true },
     // `enabled` above only turns on logs; tracing needs its own flag.
-    "traces": { "enabled": true }
+    "traces": { "enabled": true },
+    // Groups uncaught exceptions, 5xx responses and console.error calls into issues.
+    // Keep this on: a deploy without it turns Issues off, even if it was enabled in the dashboard.
+    "issues": { "enabled": true }
   },
   "upload_source_maps": true,
   // Top-level settings are production. Local dev overrides the vars from .dev.vars.
