@@ -69,6 +69,13 @@ describe('MarkdownView output', () => {
     expect(html).toContain('const a = 1')
   })
 
+  it('renders mermaid fences as their source on the server', () => {
+    const html = render('```mermaid\nflowchart LR\n  a --> b\n```')
+    expect(html).toContain('data-anchor-skip')
+    expect(html).toContain('a --&gt; b')
+    expect(html).not.toContain('<svg')
+  })
+
   it('renders task lists and tables', () => {
     expect(render('- [x] done')).toContain('type="checkbox"')
     expect(render('| a | b |\n|---|---|\n| 1 | 2 |')).toContain('<table')

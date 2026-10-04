@@ -8,6 +8,7 @@ import rehypeSanitize from 'rehype-sanitize'
 import remarkFrontmatter from 'remark-frontmatter'
 import remarkGfm from 'remark-gfm'
 import { CodeBlock } from '@/components/code/CodeBlock'
+import { MermaidDiagram } from '@/components/markdown/MermaidDiagram'
 import { resolveAssetPath, resolveRepoLink, toSplat } from '@/lib/links'
 import { extname } from '@/lib/paths'
 import {
@@ -121,7 +122,9 @@ function MdPre({ node, children }: ComponentProps<'pre'> & { node?: Element }) {
     .map(String)
     .find((c) => c.startsWith('language-'))
     ?.slice('language-'.length)
-  return <CodeBlock code={textOf(code).replace(/\n$/, '')} lang={lang} />
+  const source = textOf(code).replace(/\n$/, '')
+  if (lang?.toLowerCase() === 'mermaid') return <MermaidDiagram source={source} />
+  return <CodeBlock code={source} lang={lang} />
 }
 
 const ALERTS: Record<AlertType, { label: string; icon: ReactNode; tone: string }> = {

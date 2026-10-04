@@ -334,6 +334,10 @@
     overflow-x: auto;
     white-space: pre;
   }
+  /* Mermaid measures labels outside .doc; breaking anywhere would wrap them mid-word. */
+  .doc .mermaid-diagram {
+    overflow-wrap: normal;
+  }
   .doc [data-anchor-skip] {
     margin-block: 0 1.1em;
   }
