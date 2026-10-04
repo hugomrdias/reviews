@@ -45,6 +45,8 @@ Create the app at **GitHub → Settings → Developer settings → GitHub Apps �
 
 Generate a client secret. The app doesn't need a private key.
 
+The dev app also serves pull request Previews and needs one more callback URL. See [Signing in on a Preview](#signing-in-on-a-preview).
+
 A person sees a repository only when two things are true: their GitHub account can read it, and the app is installed on the repository's owner with that repository selected. When either isn't true, the app shows what's missing and links to the fix.
 
 ## Deploy to Cloudflare
@@ -101,7 +103,15 @@ The Workers Paid plan is recommended: rendering large documents can exceed the f
 
 ### Signing in on a Preview
 
-GitHub only redirects to callback URLs registered on the app, with no wildcards. To sign in on a Preview, add `https://pr-<number>-github-reviews.hugomrdias.workers.dev/auth/callback` to the dev GitHub App's callback URLs. Pages that don't need a session work without it.
+Previews sign in with the dev GitHub App. Add a second callback URL to it, next to the localhost one, and turn on **Allow wildcard matching** for that URL only:
+
+```
+https://hugomrdias.workers.dev/auth/callback
+```
+
+With wildcard matching, GitHub accepts any subdomain of the callback URL's host, so this one URL covers every Preview, such as `https://pr-3-github-reviews.hugomrdias.workers.dev/auth/callback`. It also lets any other Worker on the `hugomrdias.workers.dev` subdomain receive the dev app's authorization codes. That's acceptable for the dev app, but keep wildcard matching off on the production app.
+
+The Setup URL can't use a wildcard, so the dev app's stays at `http://localhost:3000/github/installed`. After you install or change the app from a Preview, GitHub sends you to localhost. Go back to the Preview tab and reload: the new repositories show up, because the Cache API doesn't run on `*.workers.dev`, so nothing is cached there.
 
 ### Migrations on Previews
 
