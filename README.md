@@ -14,9 +14,8 @@ Built with TanStack Start, React, [@pierre/trees](https://trees.software) for th
 Requirements: Node 22.12 or later and pnpm 12.
 
 1. Register a GitHub App for development (see [GitHub App](#github-app)), using `http://localhost:3000/auth/callback` as the callback URL.
-2. Put the app's client ID and slug in `wrangler.jsonc` under `vars`.
-3. Copy `.dev.vars.example` to `.dev.vars`. Fill in the client secret and a session secret (`openssl rand -base64 32`).
-4. Install, create the local database, and start:
+2. Copy `.dev.vars.example` to `.dev.vars`. Fill in the app's client ID, slug and client secret, and a session secret (`openssl rand -base64 32`). The vars in `wrangler.jsonc` are production values; `.dev.vars` overrides them locally.
+3. Install, create the local database, and start:
 
 ```bash
 pnpm install
@@ -49,13 +48,27 @@ A person sees a repository only when two things are true: their GitHub account c
 
 ## Deploy to Cloudflare
 
-1. Create the database, and put the printed `database_id` in `wrangler.jsonc`:
+GitHub Actions deploys (`.github/workflows/ci.yml`). Once the checks pass:
+
+- **Production.** Each push to `main` applies D1 migrations and deploys to https://reviews.hugodias.me.
+- **Pull request Previews.** Each pull request from this repository gets a [Worker Preview](https://developers.cloudflare.com/workers/previews/) at `https://pr-<number>-github-reviews.hugomrdias.workers.dev`. The URL is posted on the pull request, and the Preview is deleted when the pull request closes. Previews use the dev GitHub App and share the `github-reviews-preview` database, so they never touch production data. Pull requests from forks get no Preview.
+
+The Workers Paid plan is recommended: rendering large documents can exceed the free plan's 10 ms CPU limit.
+
+### One-time setup
+
+1. Create both databases. Put the production `database_id` in `d1_databases` in `wrangler.jsonc`, and the preview one in `previews.d1_databases` and in `wrangler.preview-migrations.jsonc`:
 
    ```bash
    pnpm exec wrangler d1 create github-reviews
    ```
 
-2. Set the secrets:
+   ```bash
+   pnpm exec wrangler d1 create github-reviews-preview
+   ```
+
+2. In `wrangler.jsonc`, set `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_SLUG` under `vars` to the production GitHub App.
+3. Set the production secrets, from the production GitHub App:
 
    ```bash
    pnpm exec wrangler secret put GITHUB_APP_CLIENT_SECRET
@@ -65,13 +78,33 @@ A person sees a repository only when two things are true: their GitHub account c
    pnpm exec wrangler secret put SESSION_SECRET
    ```
 
-3. In `wrangler.jsonc`, set `APP_URL`, `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_SLUG` to the production values, and uncomment `routes` with your custom domain. The Cache API, which caches files and images, doesn't run on `*.workers.dev`.
-4. In the Cloudflare dashboard, open **Workers & Pages → Create → Import a repository**, and pick this repository. Use these build settings:
-   - Build command: `pnpm run build`
-   - Deploy command: `pnpm run db:migrate:remote && pnpm exec wrangler deploy`
-   - Environment variable: `NODE_VERSION=22`
+4. Set the Preview secrets, from the dev GitHub App. Each new Preview copies them when it's created:
 
-Every push to the main branch then deploys. The Workers Paid plan is recommended: rendering large documents can exceed the free plan's 10 ms CPU limit.
+   ```bash
+   pnpm exec wrangler preview base-config secret put GITHUB_APP_CLIENT_SECRET
+   ```
+
+   ```bash
+   pnpm exec wrangler preview base-config secret put SESSION_SECRET
+   ```
+
+5. Create a Cloudflare API token from the **Edit Cloudflare Workers** template, and add **Account → D1 → Edit**. Scope the zone resources to `hugodias.me`. Add it and your account ID to the repository's Actions secrets:
+
+   ```bash
+   gh secret set CLOUDFLARE_API_TOKEN
+   ```
+
+   ```bash
+   gh secret set CLOUDFLARE_ACCOUNT_ID
+   ```
+
+### Signing in on a Preview
+
+GitHub only redirects to callback URLs registered on the app, with no wildcards. To sign in on a Preview, add `https://pr-<number>-github-reviews.hugomrdias.workers.dev/auth/callback` to the dev GitHub App's callback URLs. Pages that don't need a session work without it.
+
+### Migrations on Previews
+
+All Previews share one database, so a pull request's migrations reach it before the pull request merges. If a migration would break other open Previews, give that branch its own database: change `database_id` in both `previews.d1_databases` and `wrangler.preview-migrations.jsonc`.
 
 ## Scripts
 

@@ -1,4 +1,8 @@
 # Copy to .dev.vars and fill in. Values come from your dev GitHub App.
+# These override the production vars in wrangler.jsonc during `pnpm dev`.
+APP_URL=http://localhost:3000
+GITHUB_APP_CLIENT_ID=Iv23liZnmjeXcaWHhusz
+GITHUB_APP_SLUG=gh-reviews-dev
 GITHUB_APP_CLIENT_SECRET=
 # 32+ random bytes, base64. Generate with: openssl rand -base64 32
 SESSION_SECRET=

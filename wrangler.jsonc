@@ -6,21 +6,37 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "upload_source_maps": true,
+  // Top-level settings are production. Local dev overrides the vars from .dev.vars.
   "vars": {
     // Public URL of the app, used for the OAuth callback and origin checks.
-    "APP_URL": "http://localhost:3000",
-    "GITHUB_APP_CLIENT_ID": "Iv23liZnmjeXcaWHhusz",
-    "GITHUB_APP_SLUG": "gh-reviews-dev"
+    "APP_URL": "https://reviews.hugodias.me",
+    "GITHUB_APP_CLIENT_ID": "Iv23liQn8igMawPZFg68",
+    "GITHUB_APP_SLUG": "reviews-for-github"
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "github-reviews",
-      // Replace with the id printed by `wrangler d1 create github-reviews`.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "1ea25473-9735-4af6-8826-1703cbb313a8",
       "migrations_dir": "migrations"
     }
-  ]
-  // Production: attach a custom domain (the Cache API is a no-op on workers.dev).
-  // "routes": [{ "pattern": "reviews.example.com", "custom_domain": true }]
+  ],
+  // The Cache API is a no-op on workers.dev, so production needs the custom domain.
+  "routes": [{ "pattern": "reviews.hugodias.me", "custom_domain": true }],
+  // Pull request Previews (`wrangler preview`), on <name>-github-reviews.hugomrdias.workers.dev.
+  // CI sets APP_URL per Preview. Keep its migrations config in wrangler.preview-migrations.jsonc
+  // pointed at the same database.
+  "previews": {
+    "vars": {
+      "GITHUB_APP_CLIENT_ID": "Iv23liZnmjeXcaWHhusz",
+      "GITHUB_APP_SLUG": "gh-reviews-dev"
+    },
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "github-reviews-preview",
+        "database_id": "ecc0433a-c738-4097-80f1-945608c3ad4e"
+      }
+    ]
+  }
 }
