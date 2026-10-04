@@ -51,10 +51,13 @@ export function RepoTree({ owner, repo, ref, sha, paths, path, counts, preloaded
   countsRef.current = counts
   const current = useRef({ path, ref, pathSet, onOpenFile })
   current.current = { path, ref, pathSet, onOpenFile }
+  // Set while the route drives the selection, so it doesn't navigate back.
+  const syncing = useRef(false)
 
   const { model } = useFileTree({
     ...treeOptions(paths, path),
     onSelectionChange: (selected) => {
+      if (syncing.current) return
       const next = selected[0]
       const { path: open, ref: openRef, pathSet: files, onOpenFile: opened } = current.current
       if (!next || next === open || !files.has(next)) return
@@ -92,8 +95,18 @@ export function RepoTree({ owner, repo, ref, sha, paths, path, counts, preloaded
         if (!folder.isExpanded()) folder.expand()
       }
     }
-    const item = model.getItem(path)
-    if (item && !item.isSelected()) item.select()
+    // Select only the open file: a link from a markdown file must not leave
+    // the previous file selected too.
+    syncing.current = true
+    try {
+      for (const other of model.getSelectedPaths()) {
+        if (other !== path) model.getItem(other)?.deselect()
+      }
+      const item = model.getItem(path)
+      if (item && !item.isSelected()) item.select()
+    } finally {
+      syncing.current = false
+    }
     model.scrollToPath(path, { offset: 'nearest', focus: false })
   }, [model, path])
 
