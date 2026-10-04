@@ -9,6 +9,29 @@ The same folder supports OpenAI's portable Agent Plugins format (`plugin.json` a
 
 The bundled logo in `assets/logo.png` uses the site's `public/icon-512.png` artwork. OpenAI uses it for the plugin logo and composer icon; Claude's directory metadata points to the same asset.
 
+## Install
+
+Both clients install from this repository on GitHub. `--sparse` checks out the marketplace manifests and the plugin, not the app.
+
+In Claude Code:
+
+```sh
+claude plugin marketplace add hugomrdias/reviews --sparse .claude-plugin plugins
+claude plugin install reviews@reviews
+```
+
+Authenticate the plugin's Reviews server through `/mcp`.
+
+In Codex:
+
+```sh
+codex plugin marketplace add hugomrdias/reviews --sparse .agents/plugins --sparse plugins
+codex plugin add reviews@reviews
+codex mcp login reviews
+```
+
+The sections below cover the same clients from a local checkout, for working on the plugin.
+
 ## Package the plugin
 
 From the repository root:
@@ -19,7 +42,7 @@ pnpm plugin:package
 
 This uses the project's Node.js runtime to create `dist/reviews-plugin.zip` with the manifests at the archive root, including Claude's dotfiles. It packs the files git tracks or would track, so ignored files like `.DS_Store` stay out. Each run replaces the archive, so deleted source files do not remain in it. The ZIP is useful for sharing or uploading; local marketplaces use the plugin folder directly.
 
-## Codex
+## Codex from a checkout
 
 From the repository root, register and inspect the local marketplace:
 
@@ -32,7 +55,7 @@ To install from the CLI, run `codex plugin add reviews@reviews`, then authentica
 
 Keep one connection per client. If you previously configured a standalone `reviews` server, remove it with `codex mcp remove reviews` before using the plugin's connection.
 
-## Claude Code
+## Claude Code from a checkout
 
 From the repository root, validate and install from the local marketplace:
 

@@ -18,7 +18,7 @@ const openai = plugin.extensions['com.openai'].interface
 
 describe('the Reviews plugin manifests', () => {
   it('share their metadata', () => {
-    for (const field of ['name', 'version', 'description', 'author', 'homepage', 'repository', 'keywords']) {
+    for (const field of ['name', 'version', 'description', 'author', 'homepage', 'repository', 'license', 'keywords']) {
       expect(claudePlugin[field], field).toEqual(plugin[field])
     }
     expect(claudePlugin.displayName).toBe(openai.displayName)
