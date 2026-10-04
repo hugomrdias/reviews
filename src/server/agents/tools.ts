@@ -233,9 +233,13 @@ export function threadListText(list: ThreadList) {
   if (list.threads.length === 0) return `No matching threads in ${list.repo} at ${list.ref} (${list.sha}).`
   const head = `${list.threads.length} threads in ${list.repo} at \`${list.ref}\` (commit ${list.sha}). Line numbers refer to that commit.`
   const sections = list.threads.map((t, i) => {
+    // An open thread that was addressed before was reopened by a person, so its
+    // latest reply can still be the earlier "fixed".
     const status =
       t.status === 'open'
-        ? []
+        ? t.addressed
+          ? [`_Reopened after ${t.addressed.by} marked it addressed._`]
+          : []
         : [`_${t.status === 'addressed' ? 'Addressed' : 'Resolved'}${t.addressed ? ` by ${t.addressed.by}` : ''}._`]
     return [
       `## ${i + 1}. ${threadLocation(t.path, t.lines, t.state)}`,

@@ -1,0 +1,20 @@
+{
+  "name": "reviews",
+  "interface": {
+    "displayName": "Reviews for Github"
+  },
+  "plugins": [
+    {
+      "name": "reviews",
+      "source": {
+        "source": "local",
+        "path": "./plugins/reviews"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

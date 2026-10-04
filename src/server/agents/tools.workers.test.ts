@@ -206,5 +206,9 @@ describe('the addressed status in the store', () => {
 
     await store.setThreadStatus(getDb(), maya.id, repo.repoId, id, 'open', author)
     expect(await store.getThread(getDb(), repo.repoId, id)).toMatchObject({ status: 'open', addressed: { sha: FIX } })
+    // The latest reply is still the agent's "done", so the list says it was reopened.
+    expect(tools.threadListText(await tools.listThreads(context(), { repo: repo.fullName }))).toContain(
+      '_Reopened after hugo marked it addressed._',
+    )
   })
 })

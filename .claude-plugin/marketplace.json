@@ -1,0 +1,15 @@
+{
+  "name": "reviews",
+  "description": "Check and address repository comments through Reviews.",
+  "owner": {
+    "name": "Hugo Dias"
+  },
+  "plugins": [
+    {
+      "name": "reviews",
+      "displayName": "Reviews for Github",
+      "source": "./plugins/reviews",
+      "description": "Reviews for Github connects agents to repository comments and requested changes."
+    }
+  ]
+}

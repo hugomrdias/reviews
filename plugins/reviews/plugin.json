@@ -1,0 +1,33 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "reviews",
+  "version": "0.1.0",
+  "description": "Reviews for Github connects agents to repository comments and requested changes.",
+  "author": {
+    "name": "Hugo Dias",
+    "url": "https://hugodias.me"
+  },
+  "homepage": "https://reviews.hugodias.me",
+  "repository": "https://github.com/hugomrdias/reviews",
+  "keywords": ["github", "comments", "code-review"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Reviews for Github",
+        "shortDescription": "Check and address repository comments",
+        "longDescription": "Read comments on markdown and source files in GitHub repositories. Work through requested changes, reply with progress, and mark committed fixes addressed for a person to confirm.",
+        "developerName": "Hugo Dias",
+        "category": "Developer Tools",
+        "capabilities": ["Read", "Write"],
+        "websiteURL": "https://reviews.hugodias.me",
+        "brandColor": "#ffd43b",
+        "composerIcon": "./assets/logo.png",
+        "logo": "./assets/logo.png",
+        "defaultPrompt": [
+          "Check the Reviews comments on this repository.",
+          "Address the open Reviews comments on this repository."
+        ]
+      }
+    }
+  }
+}
