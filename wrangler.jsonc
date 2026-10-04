@@ -23,6 +23,9 @@
   ],
   // The Cache API is a no-op on workers.dev, so production needs the custom domain.
   "routes": [{ "pattern": "reviews.hugodias.me", "custom_domain": true }],
+  // Production is served only on the custom domain, but Previews need their workers.dev URLs.
+  "workers_dev": false,
+  "preview_urls": true,
   // Pull request Previews (`wrangler preview`), on <name>-github-reviews.hugomrdias.workers.dev.
   // CI sets APP_URL per Preview. Keep its migrations config in wrangler.preview-migrations.jsonc
   // pointed at the same database.
