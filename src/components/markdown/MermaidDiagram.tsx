@@ -1,5 +1,6 @@
 import { memo, useEffect, useId, useState } from 'react'
 import { PlainCode } from '@/components/code/CodeBlock'
+import { DiagramZoom } from '@/components/markdown/DiagramZoom'
 import { useTheme } from '@/lib/theme'
 
 type Mermaid = typeof import('mermaid').default
@@ -54,14 +55,17 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
 
   if (state.status === 'done') {
     return (
-      <div
-        data-anchor-skip
-        role="img"
-        aria-label="Mermaid diagram"
-        className="mermaid-diagram overflow-x-auto rounded-lg border bg-card p-4"
-        // Mermaid's own output under securityLevel 'strict' (DOMPurify-sanitized).
-        dangerouslySetInnerHTML={{ __html: state.svg }}
-      />
+      <div data-anchor-skip>
+        <DiagramZoom id={id} svg={state.svg}>
+          <div
+            role="img"
+            aria-label="Mermaid diagram"
+            className="mermaid-diagram overflow-x-auto rounded-lg border bg-card p-4"
+            // Mermaid's own output under securityLevel 'strict' (DOMPurify-sanitized).
+            dangerouslySetInnerHTML={{ __html: state.svg }}
+          />
+        </DiagramZoom>
+      </div>
     )
   }
   return (
