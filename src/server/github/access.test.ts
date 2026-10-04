@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { CodedError } from '@/lib/errors'
 import { canResolve } from '@/lib/threads'
 import type { ActiveSession } from '../auth/session'
-import { requireRepoAccess } from './access'
-import { NotFoundError } from './client'
+import { checkRepoAccess, requireRepoAccess } from './access'
+import { AuthError, GitHubError, NotFoundError } from './client'
 
 // Each test signs in as a new user, so cached answers never leak between tests.
 let nextUserId = 1
@@ -106,6 +107,37 @@ describe('requireRepoAccess', () => {
     stubGitHub({ repoBody: repo({ private: true, permissions }) })
     const access = await requireRepoAccess(session(), 'octo', 'docs')
     expect(access.permissions).toEqual({ comment, moderate })
+  })
+})
+
+describe('checkRepoAccess', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('turns a repo the user cannot read into NO_ACCESS', async () => {
+    stubGitHub({})
+    await expect(checkRepoAccess(session(), 'octo', 'docs')).rejects.toEqual(new CodedError('NO_ACCESS'))
+  })
+
+  it('turns a repo GitHub does not know into NO_ACCESS', async () => {
+    stubGitHub({})
+    await expect(checkRepoAccess(session(), 'octo', 'missing')).rejects.toEqual(new CodedError('NO_ACCESS'))
+  })
+
+  it('passes the access through', async () => {
+    stubGitHub({ repoBody: repo({ private: true }) })
+    await expect(checkRepoAccess(session(), 'octo', 'docs')).resolves.toMatchObject({ repoId: REPO_ID })
+  })
+
+  it.each([
+    ['a revoked token', 401, AuthError],
+    ['a GitHub outage', 502, GitHubError],
+  ])('leaves %s alone', async (_, status, type) => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status })))
+    const result = checkRepoAccess(session(), 'octo', 'docs')
+    await expect(result).rejects.toBeInstanceOf(type)
+    await expect(result).rejects.not.toBeInstanceOf(CodedError)
   })
 })
 

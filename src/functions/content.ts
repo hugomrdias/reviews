@@ -14,7 +14,7 @@ import { getFileCommits, getFileContent, getTree, type FileContent } from '@/ser
 import { resolveLocation as resolve, type Location } from '@/server/github/refs'
 import { repoActivity } from '@/server/comments/store'
 import { getDb } from '@/server/db/client'
-import { authMiddleware } from '@/server/middleware'
+import { authMiddleware, repoMiddleware } from '@/server/middleware'
 import { fileInput, pathSchema, repoInput, shaSchema } from './schemas'
 
 export interface RepoSummary {
@@ -75,10 +75,9 @@ export const resolveLocation = createServerFn({ method: 'GET' })
   })
 
 export const fetchTree = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([repoMiddleware])
   .validator(repoInput.extend({ sha: shaSchema }))
-  .handler(async ({ data, context: { session } }) => {
-    const access = await requireRepoAccess(session, data.owner, data.repo)
+  .handler(async ({ data, context: { session, access } }) => {
     const tree = await getTree(session.accessToken, access.repoId, access.owner, access.name, data.sha)
     return { paths: tree.entries.map((e) => e.path), truncated: tree.truncated }
   })
@@ -86,10 +85,9 @@ export const fetchTree = createServerFn({ method: 'GET' })
 export type FileResult = FileContent | { kind: 'directory'; path: string } | { kind: 'missing'; path: string }
 
 export const fetchFile = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([repoMiddleware])
   .validator(fileInput)
-  .handler(async ({ data, context: { session } }): Promise<FileResult> => {
-    const access = await requireRepoAccess(session, data.owner, data.repo)
+  .handler(async ({ data, context: { session, access } }): Promise<FileResult> => {
     const tree = await getTree(session.accessToken, access.repoId, access.owner, access.name, data.sha)
     const entry = tree.entries.find((e) => e.path === data.path)
     if (entry) return getFileContent(session.accessToken, access.repoId, access.owner, access.name, entry)
@@ -99,10 +97,9 @@ export const fetchFile = createServerFn({ method: 'GET' })
   })
 
 export const fetchFileCommits = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([repoMiddleware])
   .validator(fileInput.extend({ path: pathSchema.min(1) }))
-  .handler(async ({ data, context: { session } }) => {
-    const access = await requireRepoAccess(session, data.owner, data.repo)
+  .handler(async ({ data, context: { session, access } }) => {
     return getFileCommits(session.accessToken, access.owner, access.name, data.sha, data.path)
   })
 
