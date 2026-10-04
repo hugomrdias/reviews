@@ -34,10 +34,11 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
       { rel: 'stylesheet', href: FONTS },
       { rel: 'stylesheet', href: appCss },
-      {
-        rel: 'icon',
-        href: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231b2230'/><rect x='8' y='13' width='16' height='7' rx='1.5' fill='%23ffd43b'/></svg>",
-      },
+      // logo.svg is the source. Regenerate the ICO and PNGs from it with scripts/icons.sh.
+      { rel: 'icon', href: '/favicon.ico', sizes: '32x32' },
+      { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' },
+      { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+      { rel: 'manifest', href: '/site.webmanifest' },
     ],
   }),
   shellComponent: RootDocument,

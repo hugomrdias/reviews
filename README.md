@@ -41,6 +41,7 @@ Create the app at **GitHub → Settings → Developer settings → GitHub Apps �
 | Webhook | Off |
 | Repository permissions | Contents: Read-only, Metadata: Read-only |
 | Where can this app be installed | Any account |
+| Logo | `public/icon-512.png`, with badge background `#1b2230` |
 
 Generate a client secret. The app doesn't need a private key.
 
@@ -117,6 +118,7 @@ All Previews share one database, so a pull request's migrations reach it before 
 | `pnpm db:generate` | New migration from `src/server/db/schema.ts` |
 | `pnpm db:migrate:local` / `db:migrate:remote` | Apply migrations |
 | `pnpm cf-typegen` | Regenerate binding types after changing `wrangler.jsonc` |
+| `scripts/icons.sh` | Regenerate the favicon and app icons from `public/logo.svg` (needs ImageMagick 7) |
 
 ## How it fits together
 
