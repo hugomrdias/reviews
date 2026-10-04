@@ -26,8 +26,13 @@ export const Route = createFileRoute('/')({
       undefined,
     ),
   }),
-  loader: ({ context }) => {
-    if (context.viewer) void context.queryClient.prefetchQuery(reposQuery())
+  loader: async ({ context }) => {
+    if (!context.viewer) return
+    const repos = context.queryClient.prefetchQuery(reposQuery())
+    // The server waits so its HTML has the list the client hydrates with. A
+    // streamed prefetch can land before hydration, and the client then renders
+    // the list where the server sent skeletons. The browser doesn't need to.
+    if (import.meta.env.SSR) await repos
   },
   component: Home,
 })
