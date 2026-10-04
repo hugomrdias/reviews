@@ -36,7 +36,8 @@ export interface AnchorData {
  * - addressed: an agent says it's done; a person confirms or reopens it.
  * - resolved: done.
  */
-export type ThreadStatus = 'open' | 'addressed' | 'resolved'
+export const THREAD_STATUSES = ['open', 'addressed', 'resolved'] as const
+export type ThreadStatus = (typeof THREAD_STATUSES)[number]
 
 export interface Addressed {
   by: Author

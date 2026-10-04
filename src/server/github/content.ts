@@ -1,6 +1,6 @@
 import { isImage } from '@/lib/paths'
 import { cached, IMMUTABLE_TTL } from '../cache'
-import { githubFetch, githubJson } from './client'
+import { githubFetch, githubJson, repoBase } from './client'
 
 const MAX_TEXT_BYTES = 2 * 1024 * 1024
 
@@ -22,10 +22,6 @@ interface TreeResponse {
   tree: Array<{ path: string; type: 'blob' | 'tree' | 'commit'; sha: string; size?: number }>
 }
 
-function repoBase(owner: string, repo: string) {
-  return `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`
-}
-
 /** Files only. Directories are implied by paths; submodules are skipped. */
 export function getTree(token: string, repoId: number, owner: string, repo: string, sha: string) {
   return cached<RepoTree>(`tree:${repoId}:${sha}`, IMMUTABLE_TTL, async () => {
@@ -40,6 +36,19 @@ export function getTree(token: string, repoId: number, owner: string, repo: stri
         .map((e) => ({ path: e.path, sha: e.sha, size: e.size ?? 0 })),
     }
   })
+}
+
+/** The file at `path` in a commit, or undefined when there's none. */
+export async function getTreeEntry(
+  token: string,
+  repoId: number,
+  owner: string,
+  repo: string,
+  sha: string,
+  path: string,
+) {
+  const tree = await getTree(token, repoId, owner, repo, sha)
+  return tree.entries.find((e) => e.path === path)
 }
 
 export type FileContent =

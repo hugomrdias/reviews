@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { check, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { THREAD_STATUSES } from '@/lib/threads'
 
 export const users = sqliteTable('users', {
   // GitHub user id.
@@ -51,7 +52,7 @@ export const threads = sqliteTable(
     lineStart: integer('line_start'),
     lineEnd: integer('line_end'),
     // open → addressed (an agent says it's fixed) → resolved (a person agrees), or back to open.
-    status: text('status', { enum: ['open', 'addressed', 'resolved'] }).notNull().default('open'),
+    status: text('status', { enum: THREAD_STATUSES }).notNull().default('open'),
     resolvedBy: integer('resolved_by').references(() => users.id),
     resolvedAt: integer('resolved_at'),
     // Kept after the thread is confirmed or reopened, so its history stays readable.

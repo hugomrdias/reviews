@@ -1,8 +1,8 @@
 import type { ActiveSession } from '../auth/session'
 import { requireRepoAccess } from '../github/access'
-import { GitHubError, githubJson, NotFoundError } from '../github/client'
-import { getBlobText, getFileContent, getTree } from '../github/content'
-import { resolveLocation } from '../github/refs'
+import { NotFoundError } from '../github/client'
+import { getBlobText, getFileContent, getTreeEntry } from '../github/content'
+import { findCommitSha, resolveLocation } from '../github/refs'
 import type { RepoReader } from './tools'
 import type { AgentProps } from './grant'
 
@@ -24,8 +24,7 @@ export function repoReader(props: AgentProps): RepoReader {
       return { ref: location.ref, sha: location.sha }
     },
     async file(repo, sha, path) {
-      const tree = await getTree(token, repo.repoId, repo.owner, repo.name, sha)
-      const entry = tree.entries.find((e) => e.path === path)
+      const entry = await getTreeEntry(token, repo.repoId, repo.owner, repo.name, sha, path)
       if (!entry) return null
       const content = await getFileContent(token, repo.repoId, repo.owner, repo.name, entry)
       return content.kind === 'text' ? { source: content.text, blobSha: content.blobSha } : null
@@ -38,18 +37,6 @@ export function repoReader(props: AgentProps): RepoReader {
         throw error
       }
     },
-    async commit(repo, sha) {
-      try {
-        const data = await githubJson<{ sha: string }>(
-          token,
-          `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/commits/${sha}`,
-        )
-        return data.sha
-      } catch (error) {
-        // 422: not a commit GitHub can resolve.
-        if (error instanceof NotFoundError || (error instanceof GitHubError && error.status === 422)) return null
-        throw error
-      }
-    },
+    commit: (repo, sha) => findCommitSha(token, repo.owner, repo.name, sha),
   }
 }

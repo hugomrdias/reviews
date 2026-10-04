@@ -1,12 +1,11 @@
 import { authorizationErrorRedirect, AuthorizationError } from '@cloudflare/workers-oauth-provider'
 import { createFileRoute } from '@tanstack/react-router'
 import { env } from 'cloudflare:workers'
-import { callbackUrl, exchangeCode, OAuthError } from '@/server/auth/oauth'
+import { callbackUrl, exchangeCode, fetchGitHubUser, OAuthError } from '@/server/auth/oauth'
 import { upsertUser } from '@/server/auth/session'
 import { errorPage } from '@/server/agents/consent'
 import type { AgentProps } from '@/server/agents/grant'
 import { oauthApi } from '@/server/agents/oauth'
-import { githubJson } from '@/server/github/client'
 import type { UpstreamData } from './authorize'
 
 /** The longest name shown on comments; the client chose it. */
@@ -37,11 +36,8 @@ export const Route = createFileRoute('/oauth/callback')({
 
         try {
           const github = await exchangeCode(code, data.verifier, callbackUrl('/oauth/callback'))
-          const user = await githubJson<{ id: number; login: string; name: string | null; avatar_url: string }>(
-            github.accessToken,
-            '/user',
-          )
-          await upsertUser({ id: user.id, login: user.login, name: user.name, avatarUrl: user.avatar_url })
+          const user = await fetchGitHubUser(github.accessToken)
+          await upsertUser(user)
           const clientName = (await oauth.describeConsent(authRequest)).clientName.trim().slice(0, MAX_CLIENT_NAME) || 'Agent'
           const props: AgentProps = { userId: user.id, login: user.login, clientName, github }
           const { redirectTo } = await oauth.completeAuthorization({

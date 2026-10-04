@@ -1,4 +1,6 @@
 import { env } from 'cloudflare:workers'
+import { githubJson } from '../github/client'
+import type { SessionUser } from './session'
 
 export interface TokenSet {
   accessToken: string
@@ -73,4 +75,13 @@ export function exchangeCode(code: string, codeVerifier: string, redirectUri = c
 
 export function refreshTokens(refreshToken: string) {
   return requestToken({ grant_type: 'refresh_token', refresh_token: refreshToken })
+}
+
+/** Who the token belongs to on GitHub. */
+export async function fetchGitHubUser(token: string): Promise<SessionUser> {
+  const user = await githubJson<{ id: number; login: string; name: string | null; avatar_url: string }>(
+    token,
+    '/user',
+  )
+  return { id: user.id, login: user.login, name: user.name, avatarUrl: user.avatar_url }
 }

@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers'
 import { deleteCookie, getCookie, getRequest, setCookie } from '@tanstack/react-start/server'
 import { eq, lt } from 'drizzle-orm'
-import { getDb } from '../db/client'
+import { getDb, type Db } from '../db/client'
 import { sessions, users, type User } from '../db/schema'
 import { decrypt, deriveKey, encrypt, randomToken, sha256Hex } from './crypto'
 import { OAuthError, refreshTokens, type TokenSet } from './oauth'
@@ -50,10 +50,8 @@ function tokenKey() {
 // functions, and each one asks for the session.
 const loaded = new WeakMap<Request, Promise<ActiveSession | null>>()
 
-/** Records who someone is on GitHub, so their comments can show it. */
-export async function upsertUser(user: SessionUser) {
-  const now = Date.now()
-  await getDb()
+function upsertUserQuery(db: Db, user: SessionUser, now: number) {
+  return db
     .insert(users)
     .values({ ...user, updatedAt: now })
     .onConflictDoUpdate({
@@ -62,24 +60,31 @@ export async function upsertUser(user: SessionUser) {
     })
 }
 
+/** Records who someone is on GitHub, so their comments can show it. */
+export async function upsertUser(user: SessionUser) {
+  await upsertUserQuery(getDb(), user, Date.now())
+}
+
 export async function createSession(user: SessionUser, tokens: TokenSet) {
   const db = getDb()
   const now = Date.now()
   const key = await tokenKey()
-  await upsertUser(user)
-  // Sessions whose refresh token has expired can never be used again.
-  await db.delete(sessions).where(lt(sessions.refreshExpiresAt, now))
   const token = randomToken()
-  await db.insert(sessions).values({
-    id: await sha256Hex(token),
-    userId: user.id,
-    accessTokenEnc: await encrypt(key, tokens.accessToken),
-    accessExpiresAt: tokens.accessExpiresAt,
-    refreshTokenEnc: await encrypt(key, tokens.refreshToken),
-    refreshExpiresAt: tokens.refreshExpiresAt,
-    createdAt: now,
-    lastSeenAt: now,
-  })
+  await db.batch([
+    upsertUserQuery(db, user, now),
+    // Sessions whose refresh token has expired can never be used again.
+    db.delete(sessions).where(lt(sessions.refreshExpiresAt, now)),
+    db.insert(sessions).values({
+      id: await sha256Hex(token),
+      userId: user.id,
+      accessTokenEnc: await encrypt(key, tokens.accessToken),
+      accessExpiresAt: tokens.accessExpiresAt,
+      refreshTokenEnc: await encrypt(key, tokens.refreshToken),
+      refreshExpiresAt: tokens.refreshExpiresAt,
+      createdAt: now,
+      lastSeenAt: now,
+    }),
+  ])
   setCookie(sessionCookieName(), token, cookieOptions(SESSION_MAX_AGE))
 }
 

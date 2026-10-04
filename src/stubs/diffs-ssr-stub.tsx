@@ -3,6 +3,4 @@
 const render = () => null
 export const File = render
 export const MultiFileDiff = render
-export const FileDiff = render
-export const PatchDiff = render
 export const bundledLanguages = {}

@@ -3,16 +3,11 @@ import { createFileRoute } from '@tanstack/react-router'
 import { repoInput } from '@/functions/schemas'
 import { errorCode } from '@/lib/errors'
 import { assetContentType, extname } from '@/lib/paths'
+import { FULL_SHA_PATTERN } from '@/lib/refs'
 import { loadSession } from '@/server/auth/session'
+import { edgeCache } from '@/server/cache'
 import { checkRepoAccess } from '@/server/github/access'
-import { fetchBlob, getTree } from '@/server/github/content'
-import { FULL_SHA } from '@/server/github/refs'
-
-function edgeCache(): Cache | null {
-  return typeof caches !== 'undefined' && 'default' in caches
-    ? (caches as unknown as { default: Cache }).default
-    : null
-}
+import { fetchBlob, getTreeEntry } from '@/server/github/content'
 
 /**
  * Serves repo files (images in docs, mostly) with the viewer's own GitHub
@@ -26,7 +21,7 @@ export const Route = createFileRoute('/api/raw/$owner/$repo/$sha/$')({
         const { sha } = params
         const path = params._splat ?? ''
         const repoParams = repoInput.safeParse(params)
-        if (!repoParams.success || !FULL_SHA.test(sha) || !path) return new Response('Bad request', { status: 400 })
+        if (!repoParams.success || !FULL_SHA_PATTERN.test(sha) || !path) return new Response('Bad request', { status: 400 })
 
         const session = await loadSession()
         if (!session) return new Response('Sign in required', { status: 401 })
@@ -39,8 +34,7 @@ export const Route = createFileRoute('/api/raw/$owner/$repo/$sha/$')({
           throw error
         }
 
-        const tree = await getTree(session.accessToken, access.repoId, access.owner, access.name, sha)
-        const entry = tree.entries.find((e) => e.path === path)
+        const entry = await getTreeEntry(session.accessToken, access.repoId, access.owner, access.name, sha, path)
         if (!entry) return new Response('Not found', { status: 404 })
 
         // The edge cache is shared, so the key is the content; access was checked above.

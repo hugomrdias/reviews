@@ -30,6 +30,11 @@ export function joinPath(base: string, relative: string): string | null {
   return parts.join('/')
 }
 
+/** Encodes each segment for a URL, keeping the slashes. */
+export function encodePath(path: string) {
+  return path.split('/').map(encodeURIComponent).join('/')
+}
+
 /** "a/b/c.md" → ["a", "a/b"] */
 export function ancestors(path: string) {
   const parts = path.split('/')

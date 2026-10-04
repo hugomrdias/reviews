@@ -1,9 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { env } from 'cloudflare:workers'
 import { finishOAuth } from '@/server/auth/flow'
-import { exchangeCode, OAuthError } from '@/server/auth/oauth'
+import { exchangeCode, fetchGitHubUser, OAuthError } from '@/server/auth/oauth'
 import { createSession } from '@/server/auth/session'
-import { githubJson } from '@/server/github/client'
 
 function redirect(path: string) {
   return new Response(null, { status: 302, headers: { Location: new URL(path, env.APP_URL).toString() } })
@@ -26,11 +25,7 @@ export const Route = createFileRoute('/auth/callback')({
 
         try {
           const tokens = await exchangeCode(code, saved.verifier)
-          const user = await githubJson<{ id: number; login: string; name: string | null; avatar_url: string }>(
-            tokens.accessToken,
-            '/user',
-          )
-          await createSession({ id: user.id, login: user.login, name: user.name, avatarUrl: user.avatar_url }, tokens)
+          await createSession(await fetchGitHubUser(tokens.accessToken), tokens)
           return redirect(saved.returnTo)
         } catch (error) {
           // GitHub's error code (e.g. incorrect_client_credentials) says what to fix.

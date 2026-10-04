@@ -1,6 +1,6 @@
 import { Bot, LogOut, Monitor, Moon, Sun } from 'lucide-react'
 import { useState } from 'react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { AuthorAvatar } from '@/components/AuthorAvatar'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -13,7 +13,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { avatarSrc } from '@/components/comments/ThreadCard'
 import { useTheme, type Theme } from '@/lib/theme'
 import { ConnectedAgentsDialog } from './ConnectedAgents'
 import type { SessionUser } from '@/server/auth/session'
@@ -27,10 +26,7 @@ export function UserMenu({ viewer, align = 'end' }: { viewer: SessionUser; align
         <DropdownMenuTrigger
           render={<Button variant="ghost" size="sm" className="h-9 gap-2 px-1.5" aria-label="Account and appearance" />}
         >
-          <Avatar className="size-6">
-            {viewer.avatarUrl && <AvatarImage src={avatarSrc(viewer.avatarUrl, 48)} alt="" />}
-            <AvatarFallback className="text-[10px]">{viewer.login.slice(0, 2)}</AvatarFallback>
-          </Avatar>
+          <AuthorAvatar author={viewer} size={24} />
           <span className="truncate text-sm font-medium">{viewer.login}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align={align} className="w-56">

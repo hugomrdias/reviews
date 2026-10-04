@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { createIsomorphicFn } from '@tanstack/react-start'
 import { getCookie } from '@tanstack/react-start/server'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 
 export type Theme = 'light' | 'dark' | 'system'
 
@@ -33,21 +34,9 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
-function systemPrefersDark() {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
-}
-
 export function ThemeProvider({ initial, children }: { initial: Theme; children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(initial)
-  const [systemDark, setSystemDark] = useState(false)
-
-  useEffect(() => {
-    const media = window.matchMedia('(prefers-color-scheme: dark)')
-    setSystemDark(media.matches)
-    const onChange = () => setSystemDark(media.matches)
-    media.addEventListener('change', onChange)
-    return () => media.removeEventListener('change', onChange)
-  }, [])
+  const systemDark = useMediaQuery('(prefers-color-scheme: dark)')
 
   const resolvedTheme = theme === 'system' ? (systemDark ? 'dark' : 'light') : theme
 
@@ -57,7 +46,6 @@ export function ThemeProvider({ initial, children }: { initial: Theme; children:
 
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next)
-    if (next === 'system') setSystemDark(systemPrefersDark())
     document.cookie = `${THEME_COOKIE}=${next}; Path=/; Max-Age=31536000; SameSite=Lax`
   }, [])
 

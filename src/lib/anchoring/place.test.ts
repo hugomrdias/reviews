@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { pageText } from '../markdown/page-text'
 import type { AnchorData, ThreadView } from '../threads'
+import { unchangedLines } from './line-anchor'
 import { placeThread } from './place'
 
 const OLD = 'a'.repeat(40)
@@ -50,7 +51,11 @@ function thread(anchor: Partial<AnchorData>, blobSha = OLD): ThreadView {
 }
 
 function place(t: ThreadView, source: string, oldSource?: string) {
-  return placeThread(t, { source, blobSha: NEW }, { page: pageText(source, PATH), oldSource })
+  return placeThread(
+    t,
+    { source, blobSha: NEW },
+    { page: () => pageText(source, PATH), unchangedLines: oldSource === undefined ? undefined : unchangedLines(oldSource, source) },
+  )
 }
 
 describe('placeThread: page comments', () => {
@@ -91,7 +96,7 @@ describe('placeThread: page comments', () => {
 
   it('treats page comments on files that are not markdown as outdated', () => {
     const t = thread({ quoteExact: 'anything' })
-    expect(placeThread(t, { source: doc, blobSha: NEW }, { page: null })).toEqual({ state: 'outdated', lines: null })
+    expect(placeThread(t, { source: doc, blobSha: NEW }, { page: () => null })).toEqual({ state: 'outdated', lines: null })
   })
 })
 

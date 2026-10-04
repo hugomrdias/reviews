@@ -1,5 +1,5 @@
 import { MessageSquarePlus } from 'lucide-react'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { MarkdownView, type RepoContext } from '@/components/markdown/MarkdownView'
 import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
@@ -8,9 +8,10 @@ import { useTextHighlights } from '@/hooks/useTextHighlights'
 import { selectionLines, textAnchor } from '@/lib/anchoring/draft'
 import { buildTextIndex, nodeStart, offsetsToRange, rangeToOffsets, type TextIndex } from '@/lib/anchoring/text-index'
 import type { AnchorData } from '@/lib/threads'
+import { cn } from '@/lib/utils'
 import type { SessionUser } from '@/server/auth/session'
-import { Composer } from './Composer'
-import { ThreadCard, type ThreadLocation } from './ThreadCard'
+import { DraftComposer } from './Composer'
+import { ACTIVE_CARD, ThreadCard, type ThreadLocation } from './ThreadCard'
 
 const GAP = 12
 
@@ -111,15 +112,15 @@ export function DocumentComments({
     if (docRef.current) onIndex(buildTextIndex(docRef.current))
   }, [source, ctx, onIndex])
 
-  const draftOffsets =
-    draft?.kind === 'text' && draft.textStart !== null && draft.textEnd !== null
-      ? { start: draft.textStart, end: draft.textEnd }
-      : null
+  const draftStart = draft?.kind === 'text' ? draft.textStart : null
+  const draftEnd = draft?.kind === 'text' ? draft.textEnd : null
+  const draftOffsets = useMemo(
+    () => (draftStart !== null && draftEnd !== null ? { start: draftStart, end: draftEnd } : null),
+    [draftStart, draftEnd],
+  )
   useTextHighlights(index, anchored, activeId, draftOffsets)
 
-  const onPage = anchored.filter(
-    (a) => a.thread.status !== 'resolved' && (a.state === 'attached' || a.state === 'edited') && (a.text || a.lines),
-  )
+  const onPage = anchored.filter((a) => a.thread.status !== 'resolved' && (a.text || a.lines))
 
   // Where each note wants to sit: level with the top of its text.
   const measure = useCallback(() => {
@@ -128,6 +129,7 @@ export function DocumentComments({
     if (!root || !doc || !index) return
     const rootTop = root.getBoundingClientRect().top
     const next = new Map<string, number>()
+    const blocks = [...doc.querySelectorAll<HTMLElement>('[data-sline]')]
     for (const { thread, text, lines } of onPage) {
       let top: number | null = null
       if (text) {
@@ -135,7 +137,6 @@ export function DocumentComments({
         const rect = range?.getClientRects()[0]
         if (rect) top = rect.top - rootTop
       } else if (lines) {
-        const blocks = [...doc.querySelectorAll<HTMLElement>('[data-sline]')]
         const block = blocks.find(
           (el) => Number(el.dataset.sline) <= lines.start && Number(el.dataset.eline) >= lines.start,
         )
@@ -149,7 +150,7 @@ export function DocumentComments({
     }
     setDesired(next)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, onPage.map((a) => `${a.thread.id}:${a.text?.start}:${a.lines?.start}`).join(), draftOffsets?.start])
+  }, [index, onPage.map((a) => `${a.thread.id}:${a.text?.start}:${a.lines?.start}`).join(), draftOffsets])
 
   useLayoutEffect(() => {
     measure()
@@ -224,7 +225,6 @@ export function DocumentComments({
   const startDraft = () => {
     if (!selection) return
     onDraft(selection.anchor)
-    onActivate(null)
     window.getSelection()?.removeAllRanges()
     setSelection(null)
   }
@@ -269,15 +269,8 @@ export function DocumentComments({
         id: 'draft',
         desired: draftTop,
         node: (
-          <div className="rounded-r-md border-l-[3px] border-l-marker-strong bg-card py-2.5 pr-3 pl-3.5 shadow-[0_1px_3px_rgb(27_34_48/0.08),0_8px_24px_-12px_rgb(27_34_48/0.18)]">
-            <Composer
-              placeholder="Add a comment"
-              submitLabel="Comment"
-              autoFocus
-              pending={mutations.create.isPending}
-              onCancel={() => onDraft(null)}
-              onSubmit={onSubmitDraft}
-            />
+          <div className={cn('border-l-[3px] border-l-marker-strong py-2.5 pr-3 pl-3.5', ACTIVE_CARD)}>
+            <DraftComposer mutations={mutations} onCancel={() => onDraft(null)} onSubmit={onSubmitDraft} />
           </div>
         ),
       })

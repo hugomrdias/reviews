@@ -2,7 +2,8 @@ import { Link } from '@tanstack/react-router'
 import { Bot, Check, CheckCheck, Copy, GitCompareArrows, History, MoreHorizontal, RotateCcw } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { AuthorAvatar } from '@/components/AuthorAvatar'
+import { RelativeTime } from '@/components/RelativeTime'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,11 +18,12 @@ import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
 import type { ThreadMutations } from '@/hooks/useThreadMutations'
 import { toSplat } from '@/lib/links'
 import type { SessionUser } from '@/server/auth/session'
-import { canResolve, type Author, type CommentView, type ThreadView } from '@/lib/threads'
-import { absoluteTime, relativeTime, shortSha } from '@/lib/time'
+import { canResolve, type CommentView, type ThreadView } from '@/lib/threads'
+import { relativeTime, shortSha } from '@/lib/time'
 import { cn } from '@/lib/utils'
 import { CommentBody } from './CommentBody'
 import { Composer } from './Composer'
+import { threadLink } from './thread-link'
 
 export interface ThreadLocation {
   owner: string
@@ -30,18 +32,8 @@ export interface ThreadLocation {
   path: string
 }
 
-export function avatarSrc(url: string, size: number) {
-  return `${url}${url.includes('?') ? '&' : '?'}s=${size}`
-}
-
-export function AuthorAvatar({ author, className }: { author: Author; className?: string }) {
-  return (
-    <Avatar className={cn('size-5', className)}>
-      {author.avatarUrl && <AvatarImage src={avatarSrc(author.avatarUrl, 40)} alt="" />}
-      <AvatarFallback className="text-[10px]">{author.login.slice(0, 2)}</AvatarFallback>
-    </Avatar>
-  )
-}
+/** A note in focus: lifted off the page. Drafts share it. */
+export const ACTIVE_CARD = 'rounded-r-md bg-card shadow-[0_1px_3px_rgb(27_34_48/0.08),0_8px_24px_-12px_rgb(27_34_48/0.18)]'
 
 function Comment({
   comment,
@@ -66,9 +58,7 @@ function Comment({
             <span className="truncate">{comment.via}</span>
           </Badge>
         )}
-        <time className="text-muted-foreground" dateTime={new Date(comment.createdAt).toISOString()} title={absoluteTime(comment.createdAt)}>
-          {relativeTime(comment.createdAt)}
-        </time>
+        <RelativeTime className="text-muted-foreground" timestamp={comment.createdAt} />
         {comment.editedAt && <span className="text-muted-foreground">edited</span>}
         {own && mutations.permissions.comment && !comment.deleted && !editing && (
           <DropdownMenu>
@@ -164,10 +154,7 @@ export function ThreadCard({
   const setStatus = (status: 'open' | 'resolved') => mutations.setStatus.mutate({ threadId: thread.id, status })
 
   const copyLink = () => {
-    const url = new URL(window.location.href)
-    url.searchParams.set('thread', thread.id)
-    url.hash = ''
-    void navigator.clipboard.writeText(url.toString()).then(() => toast.success('Link copied'))
+    void navigator.clipboard.writeText(threadLink(thread.id)).then(() => toast.success('Link copied'))
   }
 
   return (
@@ -182,7 +169,7 @@ export function ThreadCard({
         thread.status === 'open' && state === 'attached' && 'border-l-marker-strong',
         ((thread.status === 'open' && state === 'edited') || addressed) && 'border-l-marker-edited border-dashed',
         ((thread.status === 'open' && (state === 'outdated' || state === 'unplaced')) || resolved) && 'border-l-border',
-        active ? 'rounded-r-md bg-card shadow-[0_1px_3px_rgb(27_34_48/0.08),0_8px_24px_-12px_rgb(27_34_48/0.18)]' : 'cursor-pointer hover:bg-card/60',
+        active ? ACTIVE_CARD : 'cursor-pointer hover:bg-card/60',
         className,
       )}
     >
@@ -277,9 +264,7 @@ function AddressedNote({ thread, location }: { thread: ThreadView; location: Thr
           </Link>
         </>
       )}
-      <time dateTime={new Date(addressed.at).toISOString()} title={absoluteTime(addressed.at)}>
-        {relativeTime(addressed.at)}
-      </time>
+      <RelativeTime timestamp={addressed.at} />
     </p>
   )
 }

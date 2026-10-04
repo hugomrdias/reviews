@@ -1,11 +1,11 @@
 import type { LineAnnotation } from '@pierre/diffs/react'
 import { useMemo, useRef } from 'react'
-import { Composer } from '@/components/comments/Composer'
+import { DraftComposer } from '@/components/comments/Composer'
 import { ThreadCard, type ThreadLocation } from '@/components/comments/ThreadCard'
 import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
 import type { ThreadMutations } from '@/hooks/useThreadMutations'
 import { linesAnchor } from '@/lib/anchoring/draft'
-import { isMarkdown } from '@/lib/paths'
+import { basename, isMarkdown } from '@/lib/paths'
 import type { AnchorData } from '@/lib/threads'
 import type { SessionUser } from '@/server/auth/session'
 import { PlainCode } from './CodeBlock'
@@ -52,7 +52,7 @@ export function SourceView({
   onDraftRef.current = onDraft
 
   const file = useMemo(
-    () => ({ name: location.path.split('/').pop() ?? 'file', contents: source, cacheKey: `${blobSha}` }),
+    () => ({ name: basename(location.path), contents: source, cacheKey: `${blobSha}` }),
     [location.path, source, blobSha],
   )
 
@@ -73,7 +73,7 @@ export function SourceView({
   const annotations = useMemo(() => {
     const list: LineAnnotation<Note>[] = []
     for (const a of anchored) {
-      if (!a.lines || a.thread.status === 'resolved' || a.state === 'outdated') continue
+      if (!a.lines || a.thread.status === 'resolved') continue
       list.push({ lineNumber: a.lines.end, metadata: { kind: 'thread', anchored: a } })
     }
     if (draft?.kind === 'lines' && draft.lineEnd) {
@@ -102,11 +102,9 @@ export function SourceView({
             <div className="max-w-2xl px-3 py-2 font-sans">
               {metadata.kind === 'draft' ? (
                 <div className="rounded-r-md border-l-[3px] border-l-marker-strong bg-background py-2.5 pr-3 pl-3.5">
-                  <Composer
+                  <DraftComposer
+                    mutations={mutations}
                     placeholder={`Comment on ${draft?.lineStart === draft?.lineEnd ? `line ${draft?.lineStart}` : `lines ${draft?.lineStart}–${draft?.lineEnd}`}`}
-                    submitLabel="Comment"
-                    autoFocus
-                    pending={mutations.create.isPending}
                     onCancel={() => onDraft(null)}
                     onSubmit={onSubmitDraft}
                   />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AnchorData } from '../threads'
-import { anchorLines, mapUnchangedLines, needsOldSource, quoteLines } from './line-anchor'
+import { anchorLines, mapUnchangedLines, needsOldSource, quoteLines, unchangedLines } from './line-anchor'
 import { anchorText } from './text-anchor'
 
 const original =
@@ -88,7 +88,7 @@ describe('anchorLines', () => {
 
   it('follows lines pushed down by an insertion', () => {
     const inserted = ['# Title', '', 'new line', 'another', 'alpha', 'beta', 'gamma', '', 'end'].join('\n')
-    expect(anchorLines(inserted, anchor, false, oldSource)).toEqual({
+    expect(anchorLines(inserted, anchor, false, unchangedLines(oldSource, inserted))).toEqual({
       state: 'attached',
       lineStart: 5,
       lineEnd: 6,
@@ -97,13 +97,13 @@ describe('anchorLines', () => {
 
   it('marks an edited range as edited', () => {
     const edited = ['# Title', '', 'alpha', 'betas', 'gamma', '', 'end'].join('\n')
-    const result = anchorLines(edited, anchor, false, oldSource)
+    const result = anchorLines(edited, anchor, false, unchangedLines(oldSource, edited))
     expect(result.state).toBe('edited')
   })
 
   it('marks deleted lines as outdated', () => {
     const deleted = ['# Title', '', 'gamma', '', 'end'].join('\n')
-    expect(anchorLines(deleted, anchor, false, oldSource)).toEqual({ state: 'outdated' })
+    expect(anchorLines(deleted, anchor, false, unchangedLines(oldSource, deleted))).toEqual({ state: 'outdated' })
   })
 })
 
@@ -139,12 +139,12 @@ describe('needsOldSource', () => {
     for (const quote of ['alpha\nbeta', 'alpha\nbet', 'alpha\nbetas']) {
       const anchor = lines(quote)
       const without = anchorLines(inserted, anchor, false)
-      const withOld = anchorLines(inserted, anchor, false, oldSource)
+      const withOld = anchorLines(inserted, anchor, false, unchangedLines(oldSource, inserted))
       if (!needsOldSource(inserted, anchor, false)) expect(withOld).toEqual(without)
     }
     // A cut-short quote is where the old source matters: it follows the lines exactly.
     expect(anchorLines(inserted, lines('alpha\nbet'), false)).toMatchObject({ state: 'edited' })
-    expect(anchorLines(inserted, lines('alpha\nbet'), false, oldSource)).toEqual({ state: 'attached', lineStart: 4, lineEnd: 5 })
+    expect(anchorLines(inserted, lines('alpha\nbet'), false, unchangedLines(oldSource, inserted))).toEqual({ state: 'attached', lineStart: 4, lineEnd: 5 })
   })
 })
 

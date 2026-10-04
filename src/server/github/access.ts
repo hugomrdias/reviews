@@ -2,7 +2,7 @@ import { CodedError } from '@/lib/errors'
 import type { CommentPermissions } from '@/lib/threads'
 import { cached, invalidate } from '../cache'
 import type { ActiveSession } from '../auth/session'
-import { githubJson, NotFoundError } from './client'
+import { githubJson, NotFoundError, repoBase } from './client'
 
 export interface RepoAccess {
   repoId: number
@@ -27,6 +27,14 @@ interface RepoResponse {
 }
 
 /**
+ * Access checks are fresh for a minute, then served for up to five more while
+ * they refresh in the background, so an expired check doesn't put GitHub's
+ * latency in front of the page. Revoked access can last that long; a refresh
+ * that fails drops the entry.
+ */
+const ACCESS_CACHE = { staleSeconds: 5 * 60 }
+
+/**
  * Confirms the signed-in user can read the repo, using their own token.
  * Throws NotFoundError otherwise. Every server function that touches a repo,
  * including every comment read and write, goes through this.
@@ -35,14 +43,6 @@ interface RepoResponse {
  * also have to be in one of the user's installations. Private repos already
  * 404 when the app isn't installed on them.
  */
-/**
- * Access checks are fresh for a minute, then served for up to five more while
- * they refresh in the background, so an expired check doesn't put GitHub's
- * latency in front of the page. Revoked access can last that long; a refresh
- * that fails drops the entry.
- */
-const ACCESS_CACHE = { staleSeconds: 5 * 60 }
-
 export function requireRepoAccess(session: ActiveSession, owner: string, repo: string) {
   const key = `repo-access:${session.user.id}:${owner.toLowerCase()}/${repo.toLowerCase()}`
   return cached<RepoAccess>(key, 60, async () => {
@@ -51,10 +51,7 @@ export function requireRepoAccess(session: ActiveSession, owner: string, repo: s
     // cached per user, so the extra call is cheap.
     const installations = listInstallations(session)
     installations.catch(() => {})
-    const data = await githubJson<RepoResponse>(
-      session.accessToken,
-      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
-    )
+    const data = await githubJson<RepoResponse>(session.accessToken, repoBase(owner, repo))
     if (!data.private && !(await isInstalled(session, await installations, data.owner.id, data.id))) {
       throw new NotFoundError(`Not installed: ${data.full_name}`, 404)
     }
@@ -175,9 +172,9 @@ async function isInstalled(
 }
 
 export type NoAccess =
-  | { kind: 'not_found' }
-  | { kind: 'repo_not_selected'; owner: string; settingsUrl: string }
-  | { kind: 'app_not_installed'; owner: string; installUrl: string }
+  | { status: 'not_found' }
+  | { status: 'repo_not_selected'; owner: string; settingsUrl: string }
+  | { status: 'app_not_installed'; owner: string; installUrl: string }
 
 /**
  * A user token only sees private repos where the GitHub App is installed, and
@@ -193,7 +190,7 @@ export async function diagnoseNoAccess(session: ActiveSession, owner: string): P
       match.type === 'Organization'
         ? `https://github.com/organizations/${match.login}/settings/installations/${match.id}`
         : `https://github.com/settings/installations/${match.id}`
-    return { kind: 'repo_not_selected', owner: match.login, settingsUrl }
+    return { status: 'repo_not_selected', owner: match.login, settingsUrl }
   }
   try {
     const account = await githubJson<{ id: number; login: string }>(
@@ -202,9 +199,9 @@ export async function diagnoseNoAccess(session: ActiveSession, owner: string): P
     )
     // Goes through /github/install, which remembers where to come back to.
     const installUrl = `/github/install?target_id=${account.id}`
-    return { kind: 'app_not_installed', owner: account.login, installUrl }
+    return { status: 'app_not_installed', owner: account.login, installUrl }
   } catch (error) {
-    if (error instanceof NotFoundError) return { kind: 'not_found' }
+    if (error instanceof NotFoundError) return { status: 'not_found' }
     throw error
   }
 }

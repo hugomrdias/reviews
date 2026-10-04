@@ -1,14 +1,11 @@
 import { diffLines } from 'diff'
 import type { AnchorData } from '../threads'
-import { exactMatches, matchQuote } from './match-quote'
+import { exactMatches, isCloseMatch, matchQuote } from './match-quote'
 import type { AnchorState } from './text-anchor'
 
 export type LineAnchorResult =
   | { state: Exclude<AnchorState, 'outdated'>; lineStart: number; lineEnd: number }
   | { state: 'outdated' }
-
-const MAX_ERROR_RATIO = 0.25
-const MIN_SCORE = 0.5
 
 /** The lines a line comment covers, joined: what gets stored as its quote. */
 export function quoteLines(source: string, start: number, end: number) {
@@ -63,6 +60,15 @@ export function mapUnchangedLines(oldText: string, newText: string) {
   return map
 }
 
+/** An older version's unchanged lines mapped onto the current one, diffed on first use. */
+export type UnchangedLines = () => Map<number, number>
+
+/** `mapUnchangedLines`, deferred and kept, so every thread on the same old version shares one diff. */
+export function unchangedLines(oldText: string, newText: string): UnchangedLines {
+  let map: Map<number, number> | undefined
+  return () => (map ??= mapUnchangedLines(oldText, newText))
+}
+
 /** The quoted lines found whole in the source, nearest the old position; null when they aren't. */
 function exactLines(source: string, anchor: AnchorData) {
   const start = anchor.lineStart ?? 1
@@ -86,12 +92,12 @@ export function needsOldSource(source: string, anchor: AnchorData, sameBlob: boo
   return anchor.kind === 'lines' && !sameBlob && exactLines(source, anchor) === null
 }
 
-/** Places a line comment in the current source. */
+/** Places a line comment in the current source. `unchanged` maps the lines of the thread's version, when it differs. */
 export function anchorLines(
   source: string,
   anchor: AnchorData,
   sameBlob: boolean,
-  oldSource?: string,
+  unchanged?: UnchangedLines,
 ): LineAnchorResult {
   const start = anchor.lineStart ?? 1
   const end = anchor.lineEnd ?? start
@@ -102,8 +108,8 @@ export function anchorLines(
 
   const quote = anchor.quoteExact
   const span = end - start
-  if (oldSource !== undefined) {
-    const map = mapUnchangedLines(oldSource, source)
+  if (unchanged) {
+    const map = unchanged()
     const mapped = Array.from({ length: span + 1 }, (_, i) => map.get(start + i))
     if (mapped.every((l) => l !== undefined)) {
       return { state: 'attached', lineStart: mapped[0]!, lineEnd: mapped[span]! }
@@ -111,7 +117,7 @@ export function anchorLines(
   }
 
   const fuzzy = matchQuote(source, quote, { hint: lineOffset(source, start) })
-  if (fuzzy && fuzzy.errors <= quote.length * MAX_ERROR_RATIO && fuzzy.score >= MIN_SCORE) {
+  if (fuzzy && isCloseMatch(fuzzy, quote)) {
     return { state: 'edited', lineStart: lineAt(source, fuzzy.start), lineEnd: lineAt(source, Math.max(fuzzy.start, fuzzy.end - 1)) }
   }
   return { state: 'outdated' }

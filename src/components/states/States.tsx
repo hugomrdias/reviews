@@ -1,6 +1,6 @@
 import { Link, useLocation, useRouter, type ErrorComponentProps } from '@tanstack/react-router'
 import { FileQuestion, FileX, Folder, FileText, LockKeyhole, Timer, TriangleAlert } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { toSplat } from '@/lib/links'
 import { basename, isMarkdown } from '@/lib/paths'
@@ -152,15 +152,17 @@ export function DirectoryListing({
   paths: readonly string[]
 }) {
   const prefix = path ? `${path}/` : ''
-  const entries = new Map<string, boolean>()
-  for (const p of paths) {
-    if (!p.startsWith(prefix)) continue
-    const rest = p.slice(prefix.length)
-    const slash = rest.indexOf('/')
-    const name = slash === -1 ? rest : rest.slice(0, slash)
-    entries.set(name, entries.get(name) === true || slash !== -1)
-  }
-  const sorted = [...entries].sort(([a, aDir], [b, bDir]) => Number(bDir) - Number(aDir) || a.localeCompare(b))
+  const sorted = useMemo(() => {
+    const entries = new Map<string, boolean>()
+    for (const p of paths) {
+      if (!p.startsWith(prefix)) continue
+      const rest = p.slice(prefix.length)
+      const slash = rest.indexOf('/')
+      const name = slash === -1 ? rest : rest.slice(0, slash)
+      entries.set(name, entries.get(name) === true || slash !== -1)
+    }
+    return [...entries].sort(([a, aDir], [b, bDir]) => Number(bDir) - Number(aDir) || a.localeCompare(b))
+  }, [paths, prefix])
   return (
     <div className="max-w-2xl">
       <h1 className="mb-4 text-xl font-semibold">{path || `${owner}/${repo}`}</h1>

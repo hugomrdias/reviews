@@ -1,6 +1,7 @@
-import { linesAt, type PageText } from '@/lib/markdown/page-text'
+import { linesAt, pageText, type PageText } from '@/lib/markdown/page-text'
+import { isMarkdown } from '@/lib/paths'
 import type { ThreadView } from '@/lib/threads'
-import { anchorLines } from './line-anchor'
+import { anchorLines, type UnchangedLines } from './line-anchor'
 import { anchorText, type AnchorState } from './text-anchor'
 
 export interface Placement {
@@ -11,9 +12,34 @@ export interface Placement {
 
 export interface PlaceOptions {
   /** The file's page text, for comments on the rendered page. Null for files that aren't markdown. */
-  page: PageText | null
-  /** The file as the thread's commit had it, for line comments written on another version. */
-  oldSource?: string
+  page: () => PageText | null
+  /** The thread's version mapped onto this one, for line comments written on another version. */
+  unchangedLines?: UnchangedLines
+}
+
+/** A file's page text, built at most once, and only when a page comment needs it. */
+export function lazyPageText(path: string, source: string) {
+  let page: PageText | null | undefined
+  return () => (page === undefined ? (page = isMarkdown(path) ? pageText(source, path) : null) : page)
+}
+
+/** Where a line comment is in a version of its file: it follows its lines. */
+export function placeLines(
+  thread: ThreadView,
+  file: { source: string; blobSha: string },
+  unchangedLines?: UnchangedLines,
+): Placement {
+  const result = anchorLines(file.source, thread.anchor, thread.blobSha === file.blobSha, unchangedLines)
+  return result.state === 'outdated'
+    ? { state: 'outdated', lines: null }
+    : { state: result.state, lines: { start: result.lineStart, end: result.lineEnd } }
+}
+
+/** A page comment's lines as recorded from the selection, which hold while the file is unchanged. */
+export function recordedLines(thread: ThreadView, blobSha: string): Placement['lines'] {
+  const { anchor } = thread
+  if (thread.blobSha !== blobSha || anchor.lineStart === null) return null
+  return { start: anchor.lineStart, end: anchor.lineEnd ?? anchor.lineStart }
 }
 
 /**
@@ -24,25 +50,16 @@ export interface PlaceOptions {
 export function placeThread(
   thread: ThreadView,
   file: { source: string; blobSha: string },
-  { page, oldSource }: PlaceOptions,
+  { page, unchangedLines }: PlaceOptions,
 ): Placement {
-  const { anchor } = thread
-  const sameBlob = thread.blobSha === file.blobSha
+  if (thread.anchor.kind === 'lines') return placeLines(thread, file, unchangedLines)
 
-  if (anchor.kind === 'lines') {
-    const result = anchorLines(file.source, anchor, sameBlob, oldSource)
-    return result.state === 'outdated'
-      ? { state: 'outdated', lines: null }
-      : { state: result.state, lines: { start: result.lineStart, end: result.lineEnd } }
-  }
-
-  // Unchanged file: the lines recorded from the selection still hold.
-  if (sameBlob && anchor.lineStart !== null) {
-    return { state: 'attached', lines: { start: anchor.lineStart, end: anchor.lineEnd ?? anchor.lineStart } }
-  }
-  if (!page) return { state: 'outdated', lines: null }
-  const result = anchorText(page.text, anchor, sameBlob)
+  const recorded = recordedLines(thread, file.blobSha)
+  if (recorded) return { state: 'attached', lines: recorded }
+  const text = page()
+  if (!text) return { state: 'outdated', lines: null }
+  const result = anchorText(text.text, thread.anchor, thread.blobSha === file.blobSha)
   return result.state === 'outdated'
     ? { state: 'outdated', lines: null }
-    : { state: result.state, lines: linesAt(page, result.start, result.end) }
+    : { state: result.state, lines: linesAt(text, result.start, result.end) }
 }

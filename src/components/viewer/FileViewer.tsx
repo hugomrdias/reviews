@@ -8,9 +8,10 @@ import { CommitPicker } from '@/components/code/CommitPicker'
 import { CompareView } from '@/components/code/CompareView'
 import { SourceView } from '@/components/code/SourceView'
 import { CommentsSheet, firstTab, groupThreads, type SheetTab } from '@/components/comments/CommentsSheet'
-import { Composer } from '@/components/comments/Composer'
+import { DraftComposer } from '@/components/comments/Composer'
 import { DocumentComments } from '@/components/comments/DocumentComments'
 import { ThreadCard, type ThreadLocation } from '@/components/comments/ThreadCard'
+import { threadLink } from '@/components/comments/thread-link'
 import { rawUrl, scrollToHash, type RepoContext } from '@/components/markdown/MarkdownView'
 import { AppSidebar } from '@/components/shell/AppSidebar'
 import { RepoHeader } from '@/components/shell/RepoHeader'
@@ -59,6 +60,9 @@ import type { ViewerSearch } from '@/lib/viewer-search'
 import type { SessionUser } from '@/server/auth/session'
 
 const NO_THREADS: ThreadView[] = []
+const NO_COUNTS: Record<string, number> = {}
+
+type View = NonNullable<ViewerSearch['view']>
 
 interface FileViewerProps {
   viewer: SessionUser
@@ -78,8 +82,6 @@ export function FileViewer({ viewer, owner, repo, splat, search, preloadedTree }
   return (
     <RepoViewer
       viewer={viewer}
-      owner={loc.repo.owner}
-      repo={loc.repo.name}
       repoSummary={loc.repo}
       refName={loc.location.ref}
       sha={loc.location.sha}
@@ -92,8 +94,6 @@ export function FileViewer({ viewer, owner, repo, splat, search, preloadedTree }
 
 interface RepoViewerProps {
   viewer: SessionUser
-  owner: string
-  repo: string
   repoSummary: RepoSummary
   refName: string
   sha: string
@@ -102,7 +102,8 @@ interface RepoViewerProps {
   preloadedTree: FileTreePreloadedData | null
 }
 
-function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, search, preloadedTree }: RepoViewerProps) {
+function RepoViewer({ viewer, repoSummary, refName, sha, path, search, preloadedTree }: RepoViewerProps) {
+  const { owner, name: repo } = repoSummary
   const navigate = useNavigate()
   const location = useLocation()
   const { data: tree } = useSuspenseQuery(treeQuery(owner, repo, sha))
@@ -116,20 +117,14 @@ function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, sear
   const text = file?.kind === 'text' ? file : null
 
   const { data: threads = NO_THREADS } = useQuery({ ...threadsQuery(owner, repo, docPath), enabled: Boolean(text) })
-  const { data: counts = {} } = useQuery(threadCountsQuery(owner, repo))
+  const { data: counts = NO_COUNTS } = useQuery(threadCountsQuery(owner, repo))
   const mutations = useThreadMutations(owner, repo, docPath, repoSummary.permissions)
 
   const markdown = text !== null && isMarkdown(docPath)
-  const views: Array<NonNullable<ViewerSearch['view']>> =
-    entry.kind === 'directory'
-      ? text
-        ? [markdown ? 'rendered' : 'source']
-        : []
-      : text
-        ? markdown
-          ? ['rendered', 'source', 'compare']
-          : ['source', 'compare']
-        : []
+  // A folder's README reads one way; a file also has its source and history.
+  let views: View[] = []
+  if (text && entry.kind === 'directory') views = [markdown ? 'rendered' : 'source']
+  else if (text) views = markdown ? ['rendered', 'source', 'compare'] : ['source', 'compare']
   const requested = search.view ?? (markdown ? 'rendered' : 'source')
   const view = views.includes(requested) ? requested : (views[0] ?? 'rendered')
 
@@ -217,12 +212,7 @@ function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, sear
       source: text.text,
       blobSha: text.blobSha,
       threads: anchored,
-      threadUrl: (id) => {
-        const url = new URL(window.location.href)
-        url.searchParams.set('thread', id)
-        url.hash = ''
-        return url.toString()
-      },
+      threadUrl: threadLink,
     })
     navigator.clipboard.writeText(prompt).then(
       () => toast.success('Copied the open comments for your agent'),
@@ -408,7 +398,7 @@ function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, sear
         onOpenChange={setSheetOpen}
         tab={sheetTab}
         onTabChange={setSheetTab}
-        anchored={anchored}
+        groups={groups}
         location={threadLocation}
         viewer={viewer}
         mutations={mutations}
@@ -441,14 +431,7 @@ function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, sear
             </DrawerHeader>
             <div className="overflow-y-auto px-4 pt-1 pb-6">
               {draft ? (
-                <Composer
-                  placeholder="Add a comment"
-                  submitLabel="Comment"
-                  autoFocus
-                  pending={mutations.create.isPending}
-                  onCancel={() => setDraft(null)}
-                  onSubmit={submitDraft}
-                />
+                <DraftComposer mutations={mutations} onCancel={() => setDraft(null)} onSubmit={submitDraft} />
               ) : activeThread ? (
                 <ThreadCard inline anchored={activeThread} location={threadLocation} viewer={viewer} mutations={mutations} active />
               ) : null}

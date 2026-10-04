@@ -11,6 +11,8 @@ import { ThreadCard, type ThreadLocation } from './ThreadCard'
 
 export type SheetTab = 'open' | 'addressed' | 'outdated' | 'resolved'
 
+export type ThreadGroups = ReturnType<typeof groupThreads>
+
 export function groupThreads(anchored: AnchoredThread[]) {
   const open = anchored.filter((a) => a.thread.status === 'open' && a.state !== 'outdated')
   // Addressed threads wait for a person wherever their text went, so they get one list.
@@ -21,7 +23,7 @@ export function groupThreads(anchored: AnchoredThread[]) {
 }
 
 /** The tab to open the sheet on: the first one with something waiting. */
-export function firstTab(groups: ReturnType<typeof groupThreads>): SheetTab {
+export function firstTab(groups: ThreadGroups): SheetTab {
   if (groups.open.length > 0) return 'open'
   if (groups.addressed.length > 0) return 'addressed'
   if (groups.outdated.length > 0) return 'outdated'
@@ -33,7 +35,8 @@ interface CommentsSheetProps {
   onOpenChange: (open: boolean) => void
   tab: SheetTab
   onTabChange: (tab: SheetTab) => void
-  anchored: AnchoredThread[]
+  /** The file's threads, from groupThreads. */
+  groups: ThreadGroups
   location: ThreadLocation
   viewer: SessionUser | null
   mutations: ThreadMutations
@@ -83,12 +86,11 @@ export function CommentsSheet({
   onOpenChange,
   tab,
   onTabChange,
-  anchored,
+  groups,
   onCopyForAgent,
   ...rest
 }: CommentsSheetProps) {
   const wide = useMediaQuery('(min-width: 768px)')
-  const groups = groupThreads(anchored)
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent

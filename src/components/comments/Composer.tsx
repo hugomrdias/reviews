@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
 import { Textarea } from '@/components/ui/textarea'
+import type { ThreadMutations } from '@/hooks/useThreadMutations'
 import { MAX_COMMENT_LENGTH } from '@/lib/threads'
 import { cn } from '@/lib/utils'
 
@@ -99,5 +100,29 @@ export function Composer({
         </Button>
       </div>
     </div>
+  )
+}
+
+/** The box for a new thread, on selected text or lines. */
+export function DraftComposer({
+  mutations,
+  placeholder = 'Add a comment',
+  onSubmit,
+  onCancel,
+}: {
+  mutations: ThreadMutations
+  placeholder?: string
+  onSubmit: (body: string) => Promise<unknown>
+  onCancel: () => void
+}) {
+  return (
+    <Composer
+      placeholder={placeholder}
+      submitLabel="Comment"
+      autoFocus
+      pending={mutations.create.isPending}
+      onCancel={onCancel}
+      onSubmit={onSubmit}
+    />
   )
 }
