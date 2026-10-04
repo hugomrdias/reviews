@@ -1,6 +1,6 @@
 # Design: an MCP server for agents
 
-Status: draft. The open questions are decided; see [Decisions](#decisions). Builds on #17 (Copy for agent, and the `comments.via` column).
+Status: built, in three pull requests on top of #17 (Copy for agent, and the `comments.via` column). The open questions are decided; see [Decisions](#decisions).
 
 ## Goal
 
@@ -79,7 +79,7 @@ The callback also upserts the `users` row, as browser sign-in does, so comments 
 
 **Keeping GitHub tokens fresh.** GitHub user tokens last 8 hours and refresh tokens 6 months. MCP access tokens last 1 hour. In `tokenExchangeCallback`, on each MCP refresh, if the GitHub token expires within 1 hour 5 minutes, refresh it and return new props. A request therefore never holds an MCP token that outlives its GitHub token. GitHub's `bad_refresh_token` throws `invalid_grant`, which revokes the grant so the client signs in again; other failures throw `temporarily_unavailable`. Grants use `refreshTokenIdleTTL` of 30 days: an agent in use stays connected, and one left idle for a month signs in again.
 
-If a GitHub call inside a tool returns 401, the person revoked the app on GitHub. The tool revokes the grant and answers `invalid_token`, so the client re-authorizes.
+If a GitHub call inside a tool returns 401, the person revoked the app on GitHub. The tool answers with an error telling them to disconnect and connect again. The grant ends on its own at the next refresh: GitHub refuses the refresh token, and `tokenExchangeCallback` revokes the grant. (Revoking it from inside the tool would need the grant's ID, which the resource handler doesn't get.)
 
 **Scopes.** `reviews:read` (list and read threads) and `reviews:write` (reply, mark addressed). The resource requires `reviews:read`; write tools answer `insufficient_scope` without `reviews:write`, so clients can step up. The consent page grants both by default, as checkboxes.
 

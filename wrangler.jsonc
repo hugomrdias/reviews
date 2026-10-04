@@ -1,9 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "github-reviews",
-  "main": "@tanstack/react-start/server-entry",
+  // src/server.ts sends the MCP and OAuth endpoints to their handlers and everything else to TanStack Start.
+  "main": "src/server.ts",
   "compatibility_date": "2026-09-28",
-  "compatibility_flags": ["nodejs_compat"],
+  // global_fetch_strictly_public: the OAuth library requires it before fetching client metadata documents.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "observability": {
     "enabled": true,
     // Keeps the OAuth code and state from /auth/callback out of logs and traces.
@@ -31,6 +33,8 @@
       "migrations_dir": "migrations"
     }
   ],
+  // Agent connections: OAuth clients, grants and tokens (stored hashed; props encrypted).
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "b4b9fcce79db4cb99e6f825dbd15268c" }],
   // The Cache API is a no-op on workers.dev, so production needs the custom domain.
   "routes": [{ "pattern": "reviews.hugodias.me", "custom_domain": true }],
   // Production is served only on the custom domain, but Previews need their workers.dev URLs.
@@ -50,6 +54,7 @@
         "database_name": "github-reviews-preview",
         "database_id": "ecc0433a-c738-4097-80f1-945608c3ad4e"
       }
-    ]
+    ],
+    "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "97131bc264664983a627c586f34f21a7" }]
   }
 }

@@ -1,4 +1,5 @@
 import { queryOptions } from '@tanstack/react-query'
+import { listConnectedAgents } from '@/functions/agents'
 import { getThreadCounts, listThreads } from '@/functions/comments'
 import { fetchFile, fetchFileCommits, fetchRepos, fetchTree, resolveLocation } from '@/functions/content'
 import { getViewer } from '@/functions/viewer'
@@ -70,4 +71,10 @@ export const reposQuery = () =>
     staleTime: 30_000,
     // People install the app in another tab, then come back.
     refetchOnWindowFocus: true,
+  })
+
+export const connectedAgentsQuery = () =>
+  queryOptions({
+    queryKey: ['connected-agents'],
+    queryFn: () => listConnectedAgents(),
   })

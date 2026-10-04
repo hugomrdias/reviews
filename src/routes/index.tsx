@@ -141,7 +141,16 @@ function Welcome({ signin, returnTo }: { signin?: 'failed' | 'expired' | 'cancel
         </div>
         <Specimen />
       </main>
-      <Credit />
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <Credit />
+        <p className="text-sm text-muted-foreground">
+          Working with a coding agent? Point it at{' '}
+          <a href="/llms.txt" className="text-link hover:underline">
+            llms.txt
+          </a>
+          .
+        </p>
+      </div>
     </div>
   )
 }

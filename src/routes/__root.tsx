@@ -58,6 +58,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' },
         { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
         { rel: 'manifest', href: '/site.webmanifest' },
+        // For coding agents: how to connect over MCP. See src/server/agents/guide.ts.
+        { rel: 'alternate', type: 'text/markdown', href: '/llms.txt', title: 'Reviews for coding agents' },
       ],
     }
   },

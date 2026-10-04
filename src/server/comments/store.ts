@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, sql, type SQL } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
 import {
   canResolve,
@@ -13,6 +13,8 @@ import { comments, threads, users, type User } from '../db/schema'
 
 export class ForbiddenError extends Error {}
 export class MissingError extends Error {}
+/** The thread isn't in a state that allows this. */
+export class ConflictError extends Error {}
 
 function toAuthor(u: Pick<User, 'id' | 'login' | 'name' | 'avatarUrl'>): Author {
   return { id: u.id, login: u.login, name: u.name, avatarUrl: u.avatarUrl }
@@ -25,8 +27,27 @@ const addresser = alias(users, 'addresser')
 const needsPerson = inArray(threads.status, ['open', 'addressed'])
 
 /** Every thread on a file, open and resolved, with its comments. */
-export async function listThreads(db: Db, repoId: number, path: string): Promise<ThreadView[]> {
-  const onFile = and(eq(threads.repoId, repoId), eq(threads.path, path))
+export function listThreads(db: Db, repoId: number, path: string): Promise<ThreadView[]> {
+  return queryThreads(db, and(eq(threads.repoId, repoId), eq(threads.path, path))!)
+}
+
+/** A repo's threads with the given statuses, on one file or all of them, by path then age. */
+export function listRepoThreads(db: Db, repoId: number, statuses: ThreadStatus[], path?: string) {
+  const where = and(
+    eq(threads.repoId, repoId),
+    inArray(threads.status, statuses),
+    path === undefined ? undefined : eq(threads.path, path),
+  )!
+  return queryThreads(db, where).then((list) => list.sort((a, b) => a.path.localeCompare(b.path)))
+}
+
+/** One thread with its comments, if it belongs to the repo. */
+export async function getThread(db: Db, repoId: number, threadId: string) {
+  const [thread] = await queryThreads(db, and(eq(threads.repoId, repoId), eq(threads.id, threadId))!)
+  return thread ?? null
+}
+
+async function queryThreads(db: Db, onFile: SQL): Promise<ThreadView[]> {
   // Both queries at once; the comments find their threads with a subquery.
   // Not db.batch: it maps joined rows by column name, and both tables have an `id`.
   const [rows, commentRows] = await Promise.all([
@@ -212,6 +233,31 @@ export async function deleteComment(db: Db, userId: number, repoId: number, comm
     db.update(comments).set({ deletedAt: now }).where(eq(comments.id, commentId)),
     db.update(threads).set({ updatedAt: now }).where(eq(threads.id, comment.threadId)),
   ])
+}
+
+/**
+ * An agent's "this is fixed": its reply, and the thread moves from open to
+ * addressed, both or neither. A person confirms or reopens it later.
+ */
+export async function markAddressed(
+  db: Db,
+  userId: number,
+  repoId: number,
+  threadId: string,
+  input: { body: string; via: string; sha: string | null },
+) {
+  const thread = await threadInRepo(db, threadId, repoId)
+  if (thread.status !== 'open') throw new ConflictError(`The thread is ${thread.status}, not open`)
+  const now = Date.now()
+  const id = crypto.randomUUID()
+  await db.batch([
+    db.insert(comments).values({ id, threadId, authorId: userId, body: input.body, via: input.via, createdAt: now }),
+    db
+      .update(threads)
+      .set({ status: 'addressed', addressedBy: userId, addressedAt: now, addressedSha: input.sha, updatedAt: now })
+      .where(eq(threads.id, threadId)),
+  ])
+  return id
 }
 
 export async function setThreadStatus(

@@ -13,14 +13,15 @@ export class OAuthError extends Error {
   }
 }
 
-export function callbackUrl() {
-  return new URL('/auth/callback', env.APP_URL).toString()
+/** Where GitHub sends people back: browser sign-in, or `/oauth/callback` when connecting an agent. */
+export function callbackUrl(path: '/auth/callback' | '/oauth/callback' = '/auth/callback') {
+  return new URL(path, env.APP_URL).toString()
 }
 
-export function authorizeUrl(state: string, codeChallenge: string) {
+export function authorizeUrl(state: string, codeChallenge: string, redirectUri = callbackUrl()) {
   const url = new URL('https://github.com/login/oauth/authorize')
   url.searchParams.set('client_id', env.GITHUB_APP_CLIENT_ID)
-  url.searchParams.set('redirect_uri', callbackUrl())
+  url.searchParams.set('redirect_uri', redirectUri)
   url.searchParams.set('state', state)
   url.searchParams.set('code_challenge', codeChallenge)
   url.searchParams.set('code_challenge_method', 'S256')
@@ -66,8 +67,8 @@ async function requestToken(params: Record<string, string>): Promise<TokenSet> {
   }
 }
 
-export function exchangeCode(code: string, codeVerifier: string) {
-  return requestToken({ code, code_verifier: codeVerifier, redirect_uri: callbackUrl() })
+export function exchangeCode(code: string, codeVerifier: string, redirectUri = callbackUrl()) {
+  return requestToken({ code, code_verifier: codeVerifier, redirect_uri: redirectUri })
 }
 
 export function refreshTokens(refreshToken: string) {

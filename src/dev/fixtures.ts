@@ -1,6 +1,7 @@
 // Fixture repo for the dev-only /dev/preview route: real-looking docs and
 // threads in every anchoring state, so the viewer can be designed and
 // checked without a GitHub App.
+import type { ConnectedAgent } from '@/functions/agents'
 import type { ThreadView } from '@/lib/threads'
 import type { SessionUser } from '@/server/auth/session'
 
@@ -299,4 +300,10 @@ export const oldReleaseProcess = releaseProcess
 export const commits = [
   { sha: SHA, message: 'Move release docs out of the wiki', authorName: 'Maya Lindqvist', authorLogin: 'maya', avatarUrl: null, date: new Date(hours(4)).toISOString() },
   { sha: OLD_SHA, message: 'Draft release process', authorName: 'Tomasz Nowak', authorLogin: 'tomasz', avatarUrl: null, date: new Date(hours(80)).toISOString() },
+]
+
+/** What Connected agents lists. */
+export const agents: ConnectedAgent[] = [
+  { grantId: 'grant-1', name: 'Claude Code', connectedAt: hours(30), canWrite: true },
+  { grantId: 'grant-2', name: 'Cursor', connectedAt: hours(24 * 9), canWrite: false },
 ]
