@@ -13,8 +13,8 @@
 
 ## Behavior changes
 
-- **Manual activation:** arrow keys now move focus between tabs without switching. Press Enter or Space to activate (comments sheet: Open, Outdated, Resolved). Flagged, not patched; opt in with `activateOnFocus` on `TabsList` if you want the Radix feel back.
+- Base UI tabs default to manual activation. The comments sheet restores the Radix behavior with `activateOnFocus` on its `TabsList` (commit ea215a8), so arrow keys switch tabs again. The wrapper matches the registry.
 
 ## Verify by hand
 
-- In the comments sheet, click each tab. Then focus a tab and use the arrow keys plus Enter.
+- In the comments sheet, click each tab. Then focus a tab and press the arrow keys: the panel should switch as focus moves.

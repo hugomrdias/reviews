@@ -17,7 +17,7 @@
 
 ## Behavior changes
 
-- **Radio items stay open on click** (`closeOnClick` defaults to false on Base UI radio/checkbox items). Picking a theme in the account menu no longer closes the menu. Flagged, not patched.
+- Base UI radio and checkbox items default to `closeOnClick={false}`. The account menu's theme radios pass `closeOnClick` (commit ea215a8), so picking a theme closes the menu as it did under Radix.
 
 ## Verify by hand
 

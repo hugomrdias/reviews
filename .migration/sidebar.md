@@ -18,4 +18,4 @@
 ## Verify by hand
 
 - Desktop: the sidebar trigger collapses and expands it, and ⌘B toggles it.
-- Mobile: the trigger opens the sheet, and Escape closes it. Choosing a file does not close the sheet; that predates the migration (nothing in the app called `setOpenMobile`).
+- Mobile: the trigger opens the sheet, and Escape closes it. Choosing a file closes the sheet (commit 78b5908; before, nothing closed it).
