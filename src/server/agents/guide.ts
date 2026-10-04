@@ -30,6 +30,14 @@ The server's instructions have the full rules.
 `
 }
 
+/** The 404 for agents that asked for markdown: what's missing, and where to start instead. */
+export function agentNotFound(appUrl: string, pathname: string) {
+  return `# Not found
+
+There's no page at \`${pathname}\` on Reviews. To connect a coding agent and work through review comments, read ${new URL('/llms.txt', appUrl)}.
+`
+}
+
 /** Whether a request for a page would rather have markdown than HTML, as some agents' fetchers ask. */
 export function prefersMarkdown(accept: string | null) {
   if (!accept) return false

@@ -2,7 +2,7 @@
 import { createExecutionContext, env } from 'cloudflare:test'
 import { describe, expect, it } from 'vitest'
 import { READ } from './grant'
-import { routeAgentRequest } from './oauth'
+import { routeAgentRequest, routeAppRequest } from './oauth'
 
 const get = (path: string, init?: RequestInit) =>
   routeAgentRequest(new Request(`http://localhost:3000${path}`, init), env, createExecutionContext())
@@ -62,5 +62,44 @@ describe('the agent guide', () => {
       expect(get('/', { headers: { Accept: accept } }), accept).toBeNull()
     }
     expect(get('/llms.txt', { method: 'POST' })).toBeNull()
+  })
+})
+
+describe('pages for agents that ask for markdown', () => {
+  const markdown = { headers: { Accept: 'text/markdown' } }
+  /** Stands in for TanStack Start, recording the Accept header it saw. */
+  const appAnswering = (status: number) => {
+    const seen: (string | null)[] = []
+    const app = async (request: Request) => {
+      seen.push(request.headers.get('Accept'))
+      return new Response('<!doctype html>', { status, headers: { 'Content-Type': 'text/html' } })
+    }
+    return { app, seen }
+  }
+  const serve = (path: string, init: RequestInit, app: (request: Request) => Promise<Response>) =>
+    routeAppRequest(new Request(`http://localhost:3000${path}`, init), env, app)
+
+  it('renders the page as HTML, so a redirect to sign-in still happens', async () => {
+    const { app, seen } = appAnswering(307)
+    expect((await serve('/acme/docs', markdown, app)).status).toBe(307)
+    expect(seen).toEqual(['text/html'])
+  })
+
+  it('answers a missing page with a markdown 404 that points at the guide', async () => {
+    const res = await serve('/nope', markdown, appAnswering(404).app)
+    expect(res.status).toBe(404)
+    expect(res.headers.get('Content-Type')).toBe('text/markdown; charset=utf-8')
+    expect(res.headers.get('Vary')).toBe('Accept')
+    const text = await res.text()
+    expect(text).toContain('`/nope`')
+    expect(text).toContain('http://localhost:3000/llms.txt')
+  })
+
+  it('leaves browsers and other methods alone', async () => {
+    const { app, seen } = appAnswering(404)
+    const html = await serve('/nope', { headers: { Accept: 'text/html,*/*;q=0.8' } }, app)
+    expect(await html.text()).toBe('<!doctype html>')
+    await serve('/nope', { method: 'POST', headers: { Accept: 'text/markdown' } }, app)
+    expect(seen).toEqual(['text/html,*/*;q=0.8', 'text/markdown'])
   })
 })

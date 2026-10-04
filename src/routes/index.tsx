@@ -56,7 +56,8 @@ function Specimen() {
   return (
     <div aria-hidden className="relative grid grid-cols-[minmax(0,1fr)_13rem] gap-6 select-none sm:gap-8">
       <div className="doc text-[0.9375rem] leading-[1.75] sm:text-base">
-        <h3 className="!mt-0 !mb-2 !text-lg">Release process</h3>
+        {/* A paragraph styled as a heading: a real h3 here would skip h2 in the page's outline. */}
+        <p className="!mb-2 text-lg leading-tight font-semibold tracking-[-0.012em] text-balance">Release process</p>
         <p className="!mb-0">
           Deploys run nightly. <mark className="rounded-[2px] bg-marker-strong px-0.5 text-inherit">The release train
           leaves at 9am UTC</mark> and anything merged after that waits a day. Hotfixes skip the train but need two

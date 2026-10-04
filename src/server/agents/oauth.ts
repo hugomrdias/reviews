@@ -1,7 +1,7 @@
 import { OAuthAuthorizationServer, OAuthError, OAuthResourceServer } from '@cloudflare/workers-oauth-provider'
 import { OAuthError as GitHubOAuthError, refreshTokens } from '../auth/oauth'
 import { READ, SCOPES, type AgentProps } from './grant'
-import { agentGuide, prefersMarkdown } from './guide'
+import { agentGuide, agentNotFound, prefersMarkdown } from './guide'
 import { mcpHandler } from './mcp'
 
 // Agents connect over MCP and sign in with OAuth 2.1. This Worker is their
@@ -114,4 +114,26 @@ function guide(request: Request, env: Env, negotiated: boolean) {
   const headers = new Headers({ 'Content-Type': 'text/markdown; charset=utf-8' })
   if (negotiated) headers.set('Vary', 'Accept')
   return new Response(request.method === 'HEAD' ? null : agentGuide(env.APP_URL, mcpUrl(env.APP_URL)), { headers })
+}
+
+/**
+ * Serves a request through the app, which answers pages with a 406 when the
+ * request doesn't accept HTML. Some agents' fetchers ask for markdown only, so
+ * their requests render as HTML instead: a page that needs sign-in still
+ * redirects to `/`, which gives them the guide, and a missing page becomes a
+ * markdown 404 that points at the guide.
+ */
+export async function routeAppRequest(request: Request, env: Env, app: (request: Request) => Response | Promise<Response>) {
+  const isRead = request.method === 'GET' || request.method === 'HEAD'
+  if (!isRead || !prefersMarkdown(request.headers.get('Accept'))) return app(request)
+  const headers = new Headers(request.headers)
+  headers.set('Accept', 'text/html')
+  const response = await app(new Request(request, { headers }))
+  if (response.status !== 404) return response
+  await response.body?.cancel()
+  const body = request.method === 'HEAD' ? null : agentNotFound(env.APP_URL, new URL(request.url).pathname)
+  return new Response(body, {
+    status: 404,
+    headers: { 'Content-Type': 'text/markdown; charset=utf-8', Vary: 'Accept' },
+  })
 }
