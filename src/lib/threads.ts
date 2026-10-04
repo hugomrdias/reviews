@@ -11,6 +11,8 @@ export interface CommentView {
   id: string
   author: Author
   body: string
+  /** The agent that posted this for the author, such as "Claude Code". Null when posted in the app. */
+  via: string | null
   createdAt: number
   editedAt: number | null
   deleted: boolean

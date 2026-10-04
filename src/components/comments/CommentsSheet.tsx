@@ -1,4 +1,6 @@
+import { Bot } from 'lucide-react'
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
@@ -25,6 +27,8 @@ interface CommentsSheetProps {
   mutations: ThreadMutations
   /** Close the sheet and show the thread in the page. */
   onReveal: (id: string) => void
+  /** Copy the open threads as a prompt for a coding agent. */
+  onCopyForAgent: () => void
 }
 
 function ThreadList({
@@ -62,7 +66,15 @@ function ThreadList({
 }
 
 /** Every thread on the file, including outdated and resolved ones. */
-export function CommentsSheet({ open, onOpenChange, tab, onTabChange, anchored, ...rest }: CommentsSheetProps) {
+export function CommentsSheet({
+  open,
+  onOpenChange,
+  tab,
+  onTabChange,
+  anchored,
+  onCopyForAgent,
+  ...rest
+}: CommentsSheetProps) {
   const wide = useMediaQuery('(min-width: 768px)')
   const groups = groupThreads(anchored)
   return (
@@ -77,6 +89,16 @@ export function CommentsSheet({ open, onOpenChange, tab, onTabChange, anchored, 
             Outdated comments point at text that has since changed or been removed.
             {!rest.mutations.permissions.comment && ' You can read comments here; writing them needs write access to the repository.'}
           </SheetDescription>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2 self-start"
+            disabled={groups.open.length + groups.outdated.length === 0}
+            onClick={onCopyForAgent}
+          >
+            <Bot data-icon="inline-start" />
+            Copy for agent
+          </Button>
         </SheetHeader>
         <Tabs value={tab} onValueChange={(v) => onTabChange(v as typeof tab)} className="min-h-0 flex-1 gap-0">
           <TabsList activateOnFocus className="mx-4 mt-3 w-[calc(100%-2rem)]">

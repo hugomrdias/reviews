@@ -51,6 +51,7 @@ export function useThreadMutations(owner: string, repo: string, path: string, pe
                     id: `pending-${Date.now()}`,
                     author: viewer,
                     body,
+                    via: null,
                     createdAt: Date.now(),
                     editedAt: null,
                     deleted: false,

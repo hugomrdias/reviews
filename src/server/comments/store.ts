@@ -43,6 +43,7 @@ export async function listThreads(db: Db, repoId: number, path: string): Promise
       id: comment.id,
       author: toAuthor(author),
       body: deleted ? '' : comment.body,
+      via: comment.via,
       createdAt: comment.createdAt,
       editedAt: comment.editedAt,
       deleted,
@@ -110,6 +111,8 @@ export interface NewThread {
   blobSha: string | null
   anchor: AnchorData
   body: string
+  /** The agent posting for the author; null when posted in the app. */
+  via: string | null
 }
 
 export async function createThread(db: Db, authorId: number, input: NewThread) {
@@ -136,7 +139,9 @@ export async function createThread(db: Db, authorId: number, input: NewThread) {
       createdAt: now,
       updatedAt: now,
     }),
-    db.insert(comments).values({ id: crypto.randomUUID(), threadId: id, authorId, body: input.body, createdAt: now }),
+    db
+      .insert(comments)
+      .values({ id: crypto.randomUUID(), threadId: id, authorId, body: input.body, via: input.via, createdAt: now }),
   ])
   return id
 }
@@ -148,12 +153,19 @@ async function threadInRepo(db: Db, threadId: string, repoId: number) {
   return row
 }
 
-export async function addComment(db: Db, authorId: number, repoId: number, threadId: string, body: string) {
+export async function addComment(
+  db: Db,
+  authorId: number,
+  repoId: number,
+  threadId: string,
+  body: string,
+  via: string | null,
+) {
   await threadInRepo(db, threadId, repoId)
   const now = Date.now()
   const id = crypto.randomUUID()
   await db.batch([
-    db.insert(comments).values({ id, threadId, authorId, body, createdAt: now }),
+    db.insert(comments).values({ id, threadId, authorId, body, via, createdAt: now }),
     db.update(threads).set({ updatedAt: now }).where(eq(threads.id, threadId)),
   ])
   return id
