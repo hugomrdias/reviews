@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { pickLongestRef, splitRefPath } from './refs'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { GitHubError, NotFoundError } from './client'
+import { pickLongestRef, resolveLocation, splitRefPath } from './refs'
 
 describe('pickLongestRef', () => {
   it('prefers the longest branch that matches whole segments', () => {
@@ -18,5 +19,45 @@ describe('splitRefPath', () => {
   it('splits the path after the ref', () => {
     expect(splitRefPath('feature/auth/docs/a.md', 'feature/auth')).toBe('docs/a.md')
     expect(splitRefPath('main', 'main')).toBe('')
+  })
+})
+
+describe('resolveLocation', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  /** Answers matching-refs with no refs and the commits API with `commits`. */
+  function stubGitHub(commits: () => Response, matchingRefs = () => Response.json([])) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => (url.includes('/git/matching-refs/') ? matchingRefs() : commits())),
+    )
+  }
+
+  it('treats a 422 from the commits API as an unknown ref', async () => {
+    stubGitHub(() => Response.json({ message: 'No commit found for SHA: AGENTS.md' }, { status: 422 }))
+    const result = resolveLocation('token', 'octo', 'unknown-ref', 'AGENTS.md', 'main')
+    await expect(result).rejects.toBeInstanceOf(NotFoundError)
+    await expect(result).rejects.toThrow('Unknown ref: AGENTS.md')
+  })
+
+  it('resolves refs the commits API accepts, such as a short SHA', async () => {
+    stubGitHub(() => new Response('a'.repeat(40)))
+    await expect(resolveLocation('token', 'octo', 'short-sha', 'abc1234/docs/a.md', 'main')).resolves.toEqual({
+      ref: 'abc1234',
+      sha: 'a'.repeat(40),
+      path: 'docs/a.md',
+    })
+  })
+
+  it('does not hide 422s from other endpoints', async () => {
+    stubGitHub(
+      () => new Response('a'.repeat(40)),
+      () => Response.json({ message: 'Validation Failed' }, { status: 422 }),
+    )
+    const result = resolveLocation('token', 'octo', 'other-422', 'main/a.md', 'main')
+    await expect(result).rejects.toBeInstanceOf(GitHubError)
+    await expect(result).rejects.not.toBeInstanceOf(NotFoundError)
   })
 })
