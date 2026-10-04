@@ -3,7 +3,7 @@ import { GitBranch, Lock } from 'lucide-react'
 import type { FileTreePreloadedData } from '@pierre/trees/react'
 import { RepoTree } from '@/components/tree/RepoTree'
 import { Badge } from '@/components/ui/badge'
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from '@/components/ui/sidebar'
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail, useSidebar } from '@/components/ui/sidebar'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { RepoSummary } from '@/functions/content'
 import { FULL_SHA_PATTERN } from '@/lib/refs'
@@ -35,6 +35,7 @@ export function AppSidebar({
   viewer,
 }: AppSidebarProps) {
   const isSha = FULL_SHA_PATTERN.test(refName)
+  const { isMobile, setOpenMobile } = useSidebar()
   return (
     <Sidebar collapsible="offcanvas">
       <SidebarHeader className="gap-2 px-3 pt-3 pb-2">
@@ -78,6 +79,8 @@ export function AppSidebar({
             path={path}
             counts={counts}
             preloaded={preloadedTree}
+            // On phones the sidebar covers the page, so get out of the way.
+            onOpenFile={isMobile ? () => setOpenMobile(false) : undefined}
           />
         </div>
       </SidebarContent>

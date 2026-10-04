@@ -35,31 +35,34 @@ interface RepoTreeProps {
   /** Open comments per file. */
   counts: Record<string, number>
   preloaded?: FileTreePreloadedData | null
+  /** Called after a row click opens another file. */
+  onOpenFile?: () => void
 }
 
 /**
  * The repo's files, from @pierre/trees. Selecting a file navigates; the
  * route's path selects and reveals the row. Rows show open comment counts.
  */
-export function RepoTree({ owner, repo, ref, sha, paths, path, counts, preloaded }: RepoTreeProps) {
+export function RepoTree({ owner, repo, ref, sha, paths, path, counts, preloaded, onOpenFile }: RepoTreeProps) {
   const navigate = useNavigate()
   const { theme } = useTheme()
   const pathSet = useMemo(() => new Set(paths), [paths])
   const countsRef = useRef(counts)
   countsRef.current = counts
-  const current = useRef({ path, ref, pathSet })
-  current.current = { path, ref, pathSet }
+  const current = useRef({ path, ref, pathSet, onOpenFile })
+  current.current = { path, ref, pathSet, onOpenFile }
 
   const { model } = useFileTree({
     ...treeOptions(paths, path),
     onSelectionChange: (selected) => {
       const next = selected[0]
-      const { path: open, ref: openRef, pathSet: files } = current.current
+      const { path: open, ref: openRef, pathSet: files, onOpenFile: opened } = current.current
       if (!next || next === open || !files.has(next)) return
       void navigate({
         to: '/$owner/$repo/$',
         params: { owner, repo, _splat: toSplat(openRef, next) },
       })
+      opened?.()
     },
     renderRowDecoration: ({ item }) => {
       if (item.kind !== 'file') return null
