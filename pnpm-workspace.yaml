@@ -3,3 +3,5 @@ allowBuilds:
   lightningcss: true
   sharp: true
   workerd: true
+minimumReleaseAgeExclude:
+  - '@tanstack/intent@0.5.3'
