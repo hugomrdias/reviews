@@ -2,7 +2,7 @@
 
 Read the markdown in a GitHub repository the way GitHub renders it, select any passage, and leave a comment for your team. Comments live in this app's database, never in the repository.
 
-- **Access follows GitHub.** People sign in with GitHub and see a repository, and its comments, only if their account can read it.
+- **Access follows GitHub.** People sign in with GitHub. They can read a repository and its comments if their account can read it and the repository's owner has installed the app. Writing comments needs write access. Public repositories work the same way, so being able to read a public repository on GitHub isn't enough to see its comments here.
 - **Links stay in the app.** Relative links between files open here, not on github.com. Images in private repositories load through the app.
 - **Comments survive edits.** Each comment remembers the quoted text and its surroundings. When the file changes, the comment follows the text. If the text was reworded, the comment is marked as edited. If the text was removed, the comment is marked as outdated, and you can still open the file as it was or see what changed.
 - **Three views per file.** *Page* shows rendered markdown with notes in the margin. *Source* shows the raw file, where you comment on lines. *Changes* shows a diff between two commits, with comments on both sides.
@@ -47,7 +47,15 @@ Generate a client secret. The app doesn't need a private key.
 
 The dev app also serves pull request Previews and needs one more callback URL. See [Signing in on a Preview](#signing-in-on-a-preview).
 
-A person sees a repository only when two things are true: their GitHub account can read it, and the app is installed on the repository's owner with that repository selected. When either isn't true, the app shows what's missing and links to the fix.
+A person sees a repository only when two things are true: their GitHub account can read it, and the app is installed on the repository's owner with that repository selected. This holds for public repositories too. GitHub lets any signed-in token read a public repository, so for those the app also checks that the repository is in one of the person's installations. When either isn't true, the app shows what's missing and links to the fix.
+
+What a person can do with comments depends on their role on the repository:
+
+| Role | Read comments | Comment, reply, edit or delete their own | Resolve or reopen threads |
+|---|---|---|---|
+| Read, Triage | Yes | No | No |
+| Write | Yes | Yes | Their own threads |
+| Maintain, Admin | Yes | Yes | Any thread |
 
 ## Deploy to Cloudflare
 

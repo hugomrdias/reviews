@@ -11,7 +11,7 @@ export const Route = createFileRoute('/github/installed')({
     handlers: {
       GET: async () => {
         const session = await loadSession()
-        if (session) await forgetInstallations(session.user.id)
+        if (session) await forgetInstallations(session)
         return new Response(null, { status: 302, headers: { Location: takeReturnTo() } })
       },
     },

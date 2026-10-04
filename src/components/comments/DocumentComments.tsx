@@ -181,6 +181,7 @@ export function DocumentComments({
   }, [])
 
   // Offer "Comment" for selections inside the document.
+  const canComment = Boolean(viewer) && mutations.permissions.comment
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>
     const update = () => {
@@ -189,7 +190,7 @@ export function DocumentComments({
         const root = rootRef.current
         const doc = docRef.current
         const sel = window.getSelection()
-        if (!root || !doc || !index || !viewer || !sel || sel.isCollapsed || sel.rangeCount === 0) {
+        if (!root || !doc || !index || !canComment || !sel || sel.isCollapsed || sel.rangeCount === 0) {
           setSelection(null)
           return
         }
@@ -218,7 +219,7 @@ export function DocumentComments({
       clearTimeout(timer)
       document.removeEventListener('selectionchange', update)
     }
-  }, [index, viewer])
+  }, [index, canComment])
 
   const startDraft = () => {
     if (!selection) return

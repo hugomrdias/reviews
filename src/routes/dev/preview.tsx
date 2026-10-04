@@ -23,7 +23,14 @@ export const Route = createFileRoute('/dev/preview')({
   loader: ({ context: { queryClient } }) => {
     const seed = <T,>(options: { queryKey: readonly unknown[] }, data: T) =>
       queryClient.setQueryData(options.queryKey as unknown[], data, { updatedAt: Date.now() + 1e9 })
-    const repo = { owner: f.OWNER, name: f.REPO, fullName: `${f.OWNER}/${f.REPO}`, private: true, defaultBranch: f.REF }
+    const repo = {
+      owner: f.OWNER,
+      name: f.REPO,
+      fullName: `${f.OWNER}/${f.REPO}`,
+      private: true,
+      defaultBranch: f.REF,
+      permissions: { comment: true, moderate: true },
+    }
     seed(locationQuery(f.OWNER, f.REPO, toSplat(f.REF, f.DOC)), {
       status: 'ok',
       repo,

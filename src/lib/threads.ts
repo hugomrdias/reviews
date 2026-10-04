@@ -44,6 +44,19 @@ export interface ThreadView {
   comments: CommentView[]
 }
 
+/** What the signed-in user may do with comments on a repo. */
+export interface CommentPermissions {
+  /** Start threads, reply, and edit or delete their own comments. Needs write access. */
+  comment: boolean
+  /** Resolve or reopen anyone's thread. Needs maintain or admin. */
+  moderate: boolean
+}
+
+/** Commenters can resolve their own threads; maintainers can resolve any. */
+export function canResolve(permissions: CommentPermissions, authorId: number, userId: number | undefined) {
+  return permissions.comment && (permissions.moderate || authorId === userId)
+}
+
 export const MAX_COMMENT_LENGTH = 10_000
 export const MAX_QUOTE_LENGTH = 4_000
 export const CONTEXT_LENGTH = 32

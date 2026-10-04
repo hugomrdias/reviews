@@ -16,7 +16,7 @@ import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
 import type { ThreadMutations } from '@/hooks/useThreadMutations'
 import { toSplat } from '@/lib/links'
 import type { SessionUser } from '@/server/auth/session'
-import type { Author, CommentView } from '@/lib/threads'
+import { canResolve, type Author, type CommentView } from '@/lib/threads'
 import { absoluteTime, relativeTime, shortSha } from '@/lib/time'
 import { cn } from '@/lib/utils'
 import { CommentBody } from './CommentBody'
@@ -62,7 +62,7 @@ function Comment({
           {relativeTime(comment.createdAt)}
         </time>
         {comment.editedAt && <span className="text-muted-foreground">edited</span>}
-        {own && !comment.deleted && !editing && (
+        {own && mutations.permissions.comment && !comment.deleted && !editing && (
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
@@ -209,7 +209,7 @@ export function ThreadCard({
 
       {active && (
         <div className="mt-3 flex flex-col gap-2">
-          {!resolved && (
+          {!resolved && mutations.permissions.comment && (
             <Composer
               placeholder="Reply"
               submitLabel="Reply"
@@ -218,16 +218,18 @@ export function ThreadCard({
             />
           )}
           <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                mutations.setStatus.mutate({ threadId: thread.id, status: resolved ? 'open' : 'resolved' })
-              }
-            >
-              {resolved ? <RotateCcw /> : <Check />}
-              {resolved ? 'Reopen' : 'Resolve'}
-            </Button>
+            {canResolve(mutations.permissions, thread.author.id, viewer?.id) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  mutations.setStatus.mutate({ threadId: thread.id, status: resolved ? 'open' : 'resolved' })
+                }
+              >
+                {resolved ? <RotateCcw /> : <Check />}
+                {resolved ? 'Reopen' : 'Resolve'}
+              </Button>
+            )}
             <ThreadMenu thread={anchored} location={location} onCopyLink={copyLink} />
           </div>
         </div>
