@@ -43,7 +43,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         { property: 'og:title', content: 'Reviews' },
         { property: 'og:description', content: DESCRIPTION },
         { property: 'og:url', content: new URL(matches.at(-1)?.pathname ?? '/', origin).toString() },
-        { property: 'og:image', content: new URL('/og-image.png', origin).toString() },
+        // Bump v after regenerating the card. Link previews cache images by URL.
+        { property: 'og:image', content: new URL('/og-image.png?v=2', origin).toString() },
         { property: 'og:image:width', content: '1200' },
         { property: 'og:image:height', content: '630' },
         { property: 'og:image:alt', content: 'Reviews: comment on the docs in your GitHub repos' },
