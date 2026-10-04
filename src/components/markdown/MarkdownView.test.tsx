@@ -69,6 +69,12 @@ describe('MarkdownView output', () => {
     expect(html).toContain('const a = 1')
   })
 
+  it('records source lines on code blocks', () => {
+    const html = render('intro\n\n```sh\ngit switch main\n```')
+    expect(html).toContain('data-sline="3"')
+    expect(html).toContain('data-eline="5"')
+  })
+
   it('renders mermaid fences as their source on the server', () => {
     const html = render('```mermaid\nflowchart LR\n  a --> b\n```')
     expect(html).toContain('data-anchor-skip')
