@@ -12,6 +12,7 @@ Before editing files for a substantial task:
 
 ## Project conventions
 
-- **UI:** shadcn/ui (Radix base, Nova style). Follow the `shadcn` skill in `.agents/skills/`, with one deliberate exception: the GitHub alert callouts in `src/components/markdown/MarkdownView.tsx` use raw Tailwind palette colors (sky, emerald, violet, amber, red) on purpose. They mirror GitHub's Note, Tip, Important, Warning and Caution colors, so keep them.
+- **UI:** shadcn/ui on Base UI (`base-nova` style). Follow the `shadcn` skill in `.agents/skills/`, with one deliberate exception: the GitHub alert callouts in `src/components/markdown/MarkdownView.tsx` use raw Tailwind palette colors (sky, emerald, violet, amber, red) on purpose. They mirror GitHub's Note, Tip, Important, Warning and Caution colors, so keep them.
+- **Base UI idioms:** compose with `render`, not `asChild`. A `Button` that renders a link needs `nativeButton={false}`. Menu items take `onClick` (there is no `onSelect`), and `DropdownMenuLabel` must sit inside a `DropdownMenuGroup` or `DropdownMenuRadioGroup`, or it throws at runtime.
 - **Imports** use the `@/` alias.
 - **Dependencies are pinned exactly** (`.npmrc` has `save-exact=true`). TanStack Start is a release candidate and `@pierre/trees` is in beta; upgrade them on purpose, not in passing.

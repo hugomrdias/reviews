@@ -33,7 +33,6 @@
     "github-slugger": "2.0.0",
     "hast-util-sanitize": "5.0.2",
     "lucide-react": "1.51.0",
-    "radix-ui": "1.6.7",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-markdown": "10.1.0",
