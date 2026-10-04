@@ -54,11 +54,22 @@
         letter-spacing: -0.01em;
       }
       mark {
-        border-radius: 4px;
+        position: relative;
+        isolation: isolate;
         padding: 0 6px;
-        background: #ffd43b;
+        background: none;
         color: inherit;
         white-space: nowrap;
+      }
+      /* Literata's content area runs well above its ascenders, so a plain background
+         reaches into the line above. Paint the highlight from just over the letter tops. */
+      mark::before {
+        content: '';
+        position: absolute;
+        inset: 0.16em 0 0.04em;
+        z-index: -1;
+        border-radius: 4px;
+        background: #ffd43b;
       }
       .note {
         margin-top: 92px;
