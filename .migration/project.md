@@ -33,8 +33,8 @@
 - `drawer.tsx` moved from vaul to Base UI (see `drawer.md`).
 - Tab focus activation and theme-menu close-on-click restored at the call sites.
 - Pre-existing issues fixed:
-  - Comment-count hydration mismatch: threads are now awaited in the loader.
-  - `resolveLanguage: "plaintext"` error: unknown fence languages fall back to `text`.
+  - Comment-count hydration mismatch: the server loader waits for thread counts (and threads, for text files) before rendering. The browser still loads them in the background, and a failed comment fetch never blocks the file.
+  - `resolveLanguage: "plaintext"` error: fence languages Shiki doesn't bundle fall back to `text` (`ansi` is kept). A test fails if the `shiki` pin drifts from the copy `@pierre/diffs` uses.
   - The mobile sidebar now closes after opening a file.
   - Unknown URLs now show a not-found page instead of TanStack's bare default.
 

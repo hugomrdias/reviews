@@ -19,25 +19,29 @@ export const Route = createFileRoute('/$owner/$repo/$')({
     if (loc.status !== 'ok') return { preloadedTree: null }
 
     const { sha, path } = loc.location
+    // Counts only need the repo, so they load alongside the file. Comment
+    // prefetches never throw: a failed one still shows the file.
+    const counts = queryClient.prefetchQuery(threadCountsQuery(owner, repo))
     const [tree, file] = await Promise.all([
       queryClient.ensureQueryData(treeQuery(owner, repo, sha)),
       queryClient.ensureQueryData(fileQuery(owner, repo, sha, path)),
     ])
     // Folders show their README, like GitHub.
     let docPath = path
+    let doc = file
     if (file.kind === 'directory') {
       const readme = findReadme(path, new Set(tree.paths))
       if (readme) {
         docPath = readme
-        await queryClient.ensureQueryData(fileQuery(owner, repo, sha, readme))
+        doc = await queryClient.ensureQueryData(fileQuery(owner, repo, sha, readme))
       }
     }
-    // Awaited so the server renders the same comment counts the client
-    // hydrates with (a streamed prefetch could land after the HTML).
-    await Promise.all([
-      queryClient.ensureQueryData(threadsQuery(owner, repo, docPath)),
-      queryClient.ensureQueryData(threadCountsQuery(owner, repo)),
-    ])
+    // The viewer only shows threads on text.
+    const threads = doc.kind === 'text' ? queryClient.prefetchQuery(threadsQuery(owner, repo, docPath)) : null
+    // The server waits so its HTML has the comment counts the client hydrates
+    // with (a streamed prefetch could land after the HTML). The browser
+    // doesn't need to.
+    if (import.meta.env.SSR) await Promise.all([counts, threads])
     return { preloadedTree: preloadTree(tree.paths, path) }
   },
   head: ({ params }) => {
