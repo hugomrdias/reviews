@@ -51,6 +51,25 @@ describe('resolveLocation', () => {
     })
   })
 
+  it('looks a branch up once for every file on it', async () => {
+    const sha = 'b'.repeat(40)
+    stubGitHub(
+      () => new Response(sha),
+      () => Response.json([{ ref: 'refs/heads/main', object: { sha, type: 'commit' } }]),
+    )
+    await expect(resolveLocation('token', 'octo', 'shared-branch', 'main/a.md', 'main')).resolves.toEqual({
+      ref: 'main',
+      sha,
+      path: 'a.md',
+    })
+    await expect(resolveLocation('token', 'octo', 'shared-branch', 'main/docs/b.md', 'main')).resolves.toEqual({
+      ref: 'main',
+      sha,
+      path: 'docs/b.md',
+    })
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
   it('does not hide 422s from other endpoints', async () => {
     stubGitHub(
       () => new Response('a'.repeat(40)),
