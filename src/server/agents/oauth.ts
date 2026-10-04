@@ -1,7 +1,7 @@
 import { OAuthAuthorizationServer, OAuthError, OAuthResourceServer } from '@cloudflare/workers-oauth-provider'
 import { OAuthError as GitHubOAuthError, refreshTokens } from '../auth/oauth'
 import { READ, SCOPES, type AgentProps } from './grant'
-import { agentGuide, agentNotFound, prefersMarkdown } from './guide'
+import { agentGuide, agentNotFound, GUIDE_PATH, prefersMarkdown } from './guide'
 import { mcpHandler } from './mcp'
 
 // Agents connect over MCP and sign in with OAuth 2.1. This Worker is their
@@ -18,7 +18,6 @@ export const AUTHORIZE_PATH = '/oauth/authorize'
 const TOKEN_PATH = '/oauth/token'
 const REGISTER_PATH = '/oauth/register'
 export const MCP_PATH = '/mcp'
-const GUIDE_PATH = '/llms.txt'
 
 export function mcpUrl(appUrl: string) {
   return new URL(MCP_PATH, appUrl).toString()

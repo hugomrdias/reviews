@@ -1,9 +1,11 @@
-import { blockquote, comment, fenced } from '@/lib/agent-prompt'
-import { placeThread, type Placement } from '@/lib/anchoring/place'
+import { z } from 'zod'
+import { comment, quoteBlock, threadLocation } from '@/lib/agent-prompt'
+import { unchangedLines, type UnchangedLines } from '@/lib/anchoring/line-anchor'
+import { lazyPageText, placeThread, type Placement } from '@/lib/anchoring/place'
 import { toSplat } from '@/lib/links'
-import { pageText, type PageText } from '@/lib/markdown/page-text'
-import { isMarkdown } from '@/lib/paths'
-import type { ThreadStatus, ThreadView } from '@/lib/threads'
+import { encodePath } from '@/lib/paths'
+import { THREAD_STATUSES, type ThreadStatus, type ThreadView } from '@/lib/threads'
+import { shortSha } from '@/lib/time'
 import * as store from '../comments/store'
 import type { Db } from '../db/client'
 import type { RepoAccess } from '../github/access'
@@ -34,31 +36,38 @@ export interface ToolContext {
   agent: { userId: number; clientName: string }
 }
 
-export interface AgentThread {
-  id: string
-  path: string
-  status: ThreadStatus
+/** A thread as the tools return it, and the tools' output schema. */
+export const agentThreadSchema = z.object({
+  id: z.string(),
+  path: z.string(),
+  status: z.enum(THREAD_STATUSES),
   /** Where it is at the listed commit. */
-  state: Placement['state']
-  lines: { start: number; end: number } | null
-  quote: string
+  state: z.enum(['attached', 'edited', 'outdated']),
+  lines: z.object({ start: z.number(), end: z.number() }).nullable(),
+  quote: z.string(),
   /** "source": exact lines of the file. "page": rendered text, without markdown syntax. */
-  quoteKind: 'source' | 'page'
+  quoteKind: z.enum(['source', 'page']),
   /** The version the comment was written on. */
-  commitSha: string
-  url: string
-  addressed: { by: string; sha: string | null; at: number } | null
-  comments: Array<{ id: string; author: string; via: string | null; body: string; createdAt: number }>
-}
+  commitSha: z.string(),
+  url: z.string(),
+  addressed: z.object({ by: z.string(), sha: z.string().nullable(), at: z.number() }).nullable(),
+  comments: z.array(
+    z.object({ id: z.string(), author: z.string(), via: z.string().nullable(), body: z.string(), createdAt: z.number() }),
+  ),
+})
 
-export interface ThreadList {
-  repo: string
-  ref: string
-  sha: string
-  threads: AgentThread[]
+export type AgentThread = z.infer<typeof agentThreadSchema>
+
+export const threadListSchema = z.object({
+  repo: z.string(),
+  ref: z.string(),
+  sha: z.string(),
+  threads: z.array(agentThreadSchema),
   /** More threads or files matched than one call returns. */
-  truncated: boolean
-}
+  truncated: z.boolean(),
+})
+
+export type ThreadList = z.infer<typeof threadListSchema>
 
 export const MAX_THREADS = 100
 export const MAX_FILES = 25
@@ -70,7 +79,7 @@ function parseRepo(repo: string) {
 }
 
 function threadUrl(appUrl: string, repo: RepoAccess, ref: string, thread: ThreadView) {
-  const splat = toSplat(ref, thread.path).split('/').map(encodeURIComponent).join('/')
+  const splat = encodePath(toSplat(ref, thread.path))
   return `${new URL(appUrl).origin}/${repo.owner}/${repo.name}/${splat}?thread=${thread.id}`
 }
 
@@ -100,23 +109,23 @@ function toAgentThread(thread: ThreadView, placement: Placement, url: string): A
 async function placeOnFile(ctx: ToolContext, repo: RepoAccess, sha: string, path: string, threads: ThreadView[]) {
   const file = await ctx.github.file(repo, sha, path)
   if (!file) return threads.map((t) => [t, { state: 'outdated', lines: null }] as const)
-  let page: PageText | null | undefined
-  const oldSources = new Map<string, Promise<string | undefined>>()
-  const oldSource = (commitSha: string) => {
-    let found = oldSources.get(commitSha)
+  const page = lazyPageText(path, file.source)
+  // Line comments on another version follow their lines through a diff, fetched and run once per commit.
+  const diffs = new Map<string, Promise<UnchangedLines | undefined>>()
+  const diffFrom = (commitSha: string) => {
+    let found = diffs.get(commitSha)
     if (!found) {
-      found = ctx.github.file(repo, commitSha, path).then((f) => f?.source)
-      oldSources.set(commitSha, found)
+      found = ctx.github.file(repo, commitSha, path).then((old) => (old ? unchangedLines(old.source, file.source) : undefined))
+      diffs.set(commitSha, found)
     }
     return found
   }
   return Promise.all(
     threads.map(async (thread) => {
       const lineThreadOnOtherVersion = thread.anchor.kind === 'lines' && thread.blobSha !== file.blobSha
-      if (thread.anchor.kind === 'text' && page === undefined) page = isMarkdown(path) ? pageText(file.source, path) : null
       const placement = placeThread(thread, file, {
-        page: page ?? null,
-        oldSource: lineThreadOnOtherVersion ? await oldSource(thread.commitSha) : undefined,
+        page,
+        unchangedLines: lineThreadOnOtherVersion ? await diffFrom(thread.commitSha) : undefined,
       })
       return [thread, placement] as const
     }),
@@ -129,10 +138,11 @@ export async function listThreads(
 ): Promise<ThreadList> {
   const { owner, name } = parseRepo(input.repo)
   const repo = await ctx.github.access(owner, name)
-  const { ref, sha } = await ctx.github.resolveRef(repo, input.ref ?? repo.defaultBranch)
   const status = input.status ?? 'open'
-  const statuses: ThreadStatus[] = status === 'all' ? ['open', 'addressed', 'resolved'] : [status]
-  const all = await store.listRepoThreads(ctx.db, repo.repoId, statuses, input.path)
+  const [{ ref, sha }, all] = await Promise.all([
+    ctx.github.resolveRef(repo, input.ref ?? repo.defaultBranch),
+    store.listRepoThreads(ctx.db, repo.repoId, status === 'all' ? [...THREAD_STATUSES] : [status], input.path),
+  ])
 
   const kept = all.slice(0, MAX_THREADS)
   const byPath = new Map<string, ThreadView[]>()
@@ -153,9 +163,11 @@ export async function listThreads(
 export async function getThread(ctx: ToolContext, input: { repo: string; threadId: string; ref?: string }) {
   const { owner, name } = parseRepo(input.repo)
   const repo = await ctx.github.access(owner, name)
-  const thread = await store.getThread(ctx.db, repo.repoId, input.threadId)
+  const [thread, { ref, sha }] = await Promise.all([
+    store.getThread(ctx.db, repo.repoId, input.threadId),
+    ctx.github.resolveRef(repo, input.ref ?? repo.defaultBranch),
+  ])
   if (!thread) throw new ToolError(`No thread ${input.threadId} in ${repo.fullName}.`)
-  const { ref, sha } = await ctx.github.resolveRef(repo, input.ref ?? repo.defaultBranch)
   const [[, placement]] = await placeOnFile(ctx, repo, sha, thread.path, [thread])
   return { repo: repo.fullName, ref, sha, thread: toAgentThread(thread, placement, threadUrl(ctx.appUrl, repo, ref, thread)) }
 }
@@ -199,7 +211,7 @@ export async function markAddressed(
         throw new ToolError(`GitHub doesn't know commit ${input.commitSha} yet. Push it, or give the full 40-character SHA.`)
       }
       sha = input.commitSha.toLowerCase()
-      note = `GitHub doesn't know commit ${sha.slice(0, 7)} yet. The link in Reviews works once it's pushed.`
+      note = `GitHub doesn't know commit ${shortSha(sha)} yet. The link in Reviews works once it's pushed.`
     }
   }
 
@@ -221,22 +233,17 @@ export function threadListText(list: ThreadList) {
   if (list.threads.length === 0) return `No matching threads in ${list.repo} at ${list.ref} (${list.sha}).`
   const head = `${list.threads.length} threads in ${list.repo} at \`${list.ref}\` (commit ${list.sha}). Line numbers refer to that commit.`
   const sections = list.threads.map((t, i) => {
-    const where = t.lines
-      ? `${t.path}:${t.lines.start === t.lines.end ? t.lines.start : `${t.lines.start}-${t.lines.end}`}`
-      : `${t.path} (${t.state === 'outdated' ? 'text removed' : 'line unknown'})`
     const status =
       t.status === 'open'
         ? []
         : [`_${t.status === 'addressed' ? 'Addressed' : 'Resolved'}${t.addressed ? ` by ${t.addressed.by}` : ''}._`]
-    const comments = t.comments.map((c) =>
-      comment({ id: c.id, author: { id: 0, login: c.author, name: null, avatarUrl: null }, body: c.body, via: c.via, createdAt: c.createdAt, editedAt: null, deleted: false }),
-    )
     return [
-      `## ${i + 1}. ${where}`,
+      `## ${i + 1}. ${threadLocation(t.path, t.lines, t.state)}`,
       `Thread ID: ${t.id}`,
-      t.quoteKind === 'source' ? fenced(t.quote) : blockquote(t.quote),
+      quoteBlock(t.quote, t.quoteKind === 'source'),
       ...status,
-      ...comments,
+      ...t.comments.map((c) => comment({ author: { login: c.author }, via: c.via, body: c.body })),
+      `Thread: ${t.url}`,
     ].join('\n\n')
   })
   return [head, ...sections, ...(list.truncated ? ['More threads matched. Narrow the list with `path`.'] : [])].join('\n\n')

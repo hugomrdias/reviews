@@ -4,9 +4,9 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+import { RelativeTime } from '@/components/RelativeTime'
 import { disconnectAgent } from '@/functions/agents'
 import { connectedAgentsQuery } from '@/lib/queries'
-import { absoluteTime, relativeTime } from '@/lib/time'
 
 /** The agents someone connected, a way to cut one off, and how to connect one. */
 export function ConnectedAgentsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -48,7 +48,7 @@ export function ConnectedAgentsDialog({ open, onOpenChange }: { open: boolean; o
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{agent.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    Connected <time title={absoluteTime(agent.connectedAt)}>{relativeTime(agent.connectedAt)}</time>
+                    Connected <RelativeTime timestamp={agent.connectedAt} />
                     {!agent.canWrite && ' · read only'}
                   </p>
                 </div>

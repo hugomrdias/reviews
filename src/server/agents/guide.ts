@@ -1,7 +1,9 @@
 // What a coding agent reads when someone says "use reviews.example.com to
-// address the comments": served as /llms.txt, and as / to clients that ask
+// address the comments": served at GUIDE_PATH, and as / to clients that ask
 // for markdown. Its job is getting the agent connected, with an outline of the
 // work. The MCP server's own instructions have the full rules.
+
+export const GUIDE_PATH = '/llms.txt'
 
 /** The guide, naming this deployment's site and MCP endpoint. */
 export function agentGuide(appUrl: string, mcpUrl: string) {
@@ -14,31 +16,27 @@ export function agentGuide(appUrl: string, mcpUrl: string) {
 
 The MCP server is at ${mcpUrl} (Streamable HTTP, with OAuth). If you already have the Reviews tools (list_threads, get_thread, reply, mark_addressed), go straight to the work below.
 
-Otherwise, set the server up with the person. It adds a server to their MCP config, so run the command once they ask you to connect or approve it:
+Otherwise, add the server to the person's MCP config. Run the command once they ask you to connect or approve it:
 
 - Codex: check with \`codex mcp get reviews\`, then add it with \`codex mcp add reviews --url ${mcpUrl}\`. If adding it doesn't start the sign-in, run \`codex mcp login reviews\`.
 - Claude Code: run \`claude mcp add --transport http reviews ${mcpUrl}\`. The person signs in from \`/mcp\`.
-- Other MCP clients: add a remote Streamable HTTP server with the URL above.
+- Other MCP clients: add it as a remote server with the URL above.
 
 The sign-in opens in the person's browser with their GitHub account, so wait for them to finish it. If the tools still aren't there in this session, ask the person to restart their client and come back to this chat.
 
-Until the tools work, you can't see the comments. Tell the person the connection isn't set up yet, which is different from there being no comments. The site's pages need a signed-in browser, so the tools are the only way in.
+The site's pages need a signed-in browser, so until the tools work you can't see the comments. Tell the person the connection isn't set up yet, which is different from there being no comments.
 
 ## Work with comments
 
-Find the repository with \`git remote get-url origin\`, and pass it to the tools as owner/name.
+Find the repository with \`git remote get-url origin\`, and pass it to the tools as owner/name. Read the threads with list_threads, then get_thread for the ones that matter.
 
 ### Check comments
 
-When asked to check, list or summarize the comments, call list_threads, then get_thread for the threads that matter. Report each one with its file, lines and url. Checking is read-only: files and threads stay as they are until the person asks you to address them.
+When asked to check, list or summarize the comments, report what the threads say. Checking is read-only.
 
 ### Address comments
 
-1. Use the address_comments prompt, or call list_threads and then get_thread.
-2. Change files where a comment asks for a clear change. Reply on the thread when it asks a question or needs a decision.
-3. After committing, call mark_addressed with a short summary and the commit SHA. A person confirms it.
-
-The server's instructions have the full rules.
+Use the address_comments prompt, or read the threads as above. Change files where comments ask for clear changes, reply on threads that need a person, and call mark_addressed once the fix is committed. The server's instructions have the full rules.
 `
 }
 
@@ -46,7 +44,7 @@ The server's instructions have the full rules.
 export function agentNotFound(appUrl: string, pathname: string) {
   return `# Not found
 
-There's no page at \`${pathname}\` on Reviews. To connect a coding agent and work through review comments, read ${new URL('/llms.txt', appUrl)}.
+There's no page at \`${pathname}\` on Reviews. To connect a coding agent and work through review comments, read ${new URL(GUIDE_PATH, appUrl)}.
 `
 }
 

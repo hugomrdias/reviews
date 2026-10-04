@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { env } from 'cloudflare:workers'
 import { z } from 'zod'
+import { WRITE } from '@/server/agents/grant'
 import { mcpUrl, oauthApi } from '@/server/agents/oauth'
 import { authMiddleware } from '@/server/middleware'
 
@@ -23,7 +24,7 @@ export const listConnectedAgents = createServerFn({ method: 'GET' })
         name: typeof grant.metadata?.clientName === 'string' ? grant.metadata.clientName : grant.clientId,
         // The library counts in seconds.
         connectedAt: grant.createdAt * 1000,
-        canWrite: grant.scope.includes('reviews:write'),
+        canWrite: grant.scope.includes(WRITE),
       }))
       .sort((a, b) => b.connectedAt - a.connectedAt)
     return { agents, mcpUrl: mcpUrl(env.APP_URL) }

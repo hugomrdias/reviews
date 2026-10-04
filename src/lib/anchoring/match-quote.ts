@@ -77,7 +77,7 @@ export function scoreMatch(text: string, quote: string, match: RawMatch, context
   )
 }
 
-/** The best match for `quote` in `text`, or null when nothing is close. */
+/** The best match for `quote` in `text`, preferring exact copies, or null when nothing is close. */
 export function matchQuote(text: string, quote: string, context: QuoteContext = {}): QuoteMatch | null {
   if (!quote) return null
   const maxErrors = Math.min(256, Math.floor(quote.length / 2))
@@ -88,4 +88,13 @@ export function matchQuote(text: string, quote: string, context: QuoteContext = 
     if (!best || score > best.score) best = { ...candidate, score }
   }
   return best
+}
+
+/** Fuzzy matches above this share of errors count as gone, not edited. */
+const MAX_ERROR_RATIO = 0.25
+const MIN_SCORE = 0.5
+
+/** Whether a fuzzy match is close enough to be the quoted text, edited, rather than something else. */
+export function isCloseMatch(match: QuoteMatch, quote: string) {
+  return match.errors <= quote.length * MAX_ERROR_RATIO && match.score >= MIN_SCORE
 }

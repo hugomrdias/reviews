@@ -1,8 +1,6 @@
-import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
-import { placeThread, type Placement } from './anchoring/place'
-import { pageText, type PageText } from './markdown/page-text'
-import { isMarkdown } from './paths'
-import type { CommentView } from './threads'
+import type { AnchoredThread, PlacedState } from '@/hooks/useAnchoredThreads'
+import { lazyPageText, placeThread, type Placement } from './anchoring/place'
+import type { PageText } from './markdown/page-text'
 
 // "Copy for agent": a file's open threads as markdown a coding agent can act
 // on. Each thread gets its source lines, its quote and its comments.
@@ -31,27 +29,36 @@ export function placeAnchored(
   page: () => PageText | null,
 ): Placement {
   if (state === 'outdated') return { state, lines: null }
-  if (lines) return { state: state === 'unplaced' ? 'attached' : state, lines }
-  const placed = placeThread(thread, file, { page: page() })
-  if (state === 'unplaced') return placed
-  return { state, lines: placed.lines }
+  if (state === 'unplaced') return placeThread(thread, file, { page })
+  return { state, lines: lines ?? placeThread(thread, file, { page }).lines }
 }
 
 /** A fence longer than any run of backticks in the text. */
-export function fenced(text: string) {
+function fenced(text: string) {
   const longest = Math.max(0, ...(text.match(/`+/g) ?? []).map((run) => run.length))
   const fence = '`'.repeat(Math.max(3, longest + 1))
   return `${fence}\n${text}\n${fence}`
 }
 
-export function blockquote(text: string) {
+function blockquote(text: string) {
   return text
     .split('\n')
     .map((line) => (line ? `> ${line}` : '>'))
     .join('\n')
 }
 
-export function comment(c: CommentView) {
+/** A quote: exact source lines go in a code block, rendered page text in a blockquote. */
+export function quoteBlock(quote: string, sourceLines: boolean) {
+  return sourceLines ? fenced(quote) : blockquote(quote)
+}
+
+/** "path:3-5", or the path and why there are no lines. */
+export function threadLocation(path: string, lines: { start: number; end: number } | null, state: PlacedState) {
+  if (!lines) return `${path} (${state === 'outdated' ? 'text removed' : 'line unknown'})`
+  return `${path}:${lines.start === lines.end ? lines.start : `${lines.start}-${lines.end}`}`
+}
+
+export function comment(c: { author: { login: string }; via: string | null; body: string }) {
   const via = c.via ? ` (via ${c.via})` : ''
   return `**${c.author.login}**${via}:\n\n${c.body}`
 }
@@ -72,14 +79,10 @@ const GUIDANCE = [
 type Placed = AnchoredThread & { at: { start: number; end: number } | null }
 
 function section({ thread, state, at }: Placed, n: number, path: string, threadUrl: (id: string) => string) {
-  const where = at
-    ? `${path}:${at.start === at.end ? at.start : `${at.start}-${at.end}`}`
-    : `${path} (${state === 'outdated' ? 'text removed' : 'line unknown'})`
-  const quote = thread.anchor.kind === 'lines' ? fenced(thread.anchor.quoteExact) : blockquote(thread.anchor.quoteExact)
   const comments = thread.comments.filter((c) => !c.deleted).map(comment)
   return [
-    `### ${n}. ${where}`,
-    quote,
+    `### ${n}. ${threadLocation(path, at, state)}`,
+    quoteBlock(thread.anchor.quoteExact, thread.anchor.kind === 'lines'),
     ...(state === 'edited' ? [EDITED_NOTE] : []),
     ...comments,
     `Thread: ${threadUrl(thread.id)}`,
@@ -87,13 +90,11 @@ function section({ thread, state, at }: Placed, n: number, path: string, threadU
 }
 
 export function threadsForAgent({ repo, ref, sha, path, source, blobSha, threads, threadUrl }: AgentPromptInput) {
-  let page: PageText | null | undefined
-  // Built at most once, and only when a page comment needs it.
-  const getPage = () => (page === undefined ? (page = isMarkdown(path) ? pageText(source, path) : null) : page)
+  const page = lazyPageText(path, source)
   const placed: Placed[] = threads
     .filter((a) => a.thread.status === 'open')
     .map((a) => {
-      const { state, lines } = placeAnchored(a, { source, blobSha }, getPage)
+      const { state, lines } = placeAnchored(a, { source, blobSha }, page)
       return { ...a, state, at: lines }
     })
     .sort((a, b) => (a.at?.start ?? Infinity) - (b.at?.start ?? Infinity) || a.thread.createdAt - b.thread.createdAt)

@@ -1,16 +1,11 @@
 import { env } from 'cloudflare:workers'
 import { deleteCookie, getCookie, setCookie } from '@tanstack/react-start/server'
+import { safeReturnTo } from '@/lib/auth'
 import { cookieOptions } from './session'
 import { decrypt, deriveKey, encrypt, randomToken, safeEqual, sha256Base64Url } from './crypto'
 
 const OAUTH_COOKIE = 'oauth'
 const RETURN_COOKIE = 'return_to'
-
-/** Only same-origin paths. Blocks "//evil.com" and "/\evil.com". */
-export function safeReturnTo(value: string | null | undefined): string {
-  if (!value || !value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return '/'
-  return value
-}
 
 interface OAuthState {
   state: string

@@ -1,8 +1,7 @@
 import { createMiddleware } from '@tanstack/react-start'
+import { UNAUTHENTICATED } from '@/lib/auth'
 import { AuthError } from './github/client'
 import { deleteSessionById, loadSession } from './auth/session'
-
-export const UNAUTHENTICATED = 'UNAUTHENTICATED'
 
 /**
  * Requires a signed-in user and passes `{ session }` to the server function.

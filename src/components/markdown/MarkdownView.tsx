@@ -8,6 +8,7 @@ import { MermaidDiagram } from '@/components/markdown/MermaidDiagram'
 import { resolveAssetPath, resolveRepoLink, toSplat } from '@/lib/links'
 import { markdownPipeline } from '@/lib/markdown/pipeline'
 import { ALERT_LABELS, type AlertType } from '@/lib/markdown/plugins'
+import { encodePath } from '@/lib/paths'
 
 export interface RepoContext {
   owner: string
@@ -22,7 +23,7 @@ export interface RepoContext {
 }
 
 export function rawUrl(ctx: Pick<RepoContext, 'owner' | 'repo' | 'sha'>, path: string) {
-  return `/api/raw/${ctx.owner}/${ctx.repo}/${ctx.sha}/${path.split('/').map(encodeURIComponent).join('/')}`
+  return `/api/raw/${ctx.owner}/${ctx.repo}/${ctx.sha}/${encodePath(path)}`
 }
 
 /** Scrolls to a heading or footnote; ids carry GitHub's "user-content-" prefix. */

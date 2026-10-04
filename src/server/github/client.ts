@@ -1,5 +1,10 @@
 const API = 'https://api.github.com'
 
+/** The REST API path of a repo, which every repo endpoint starts with. */
+export function repoBase(owner: string, repo: string) {
+  return `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`
+}
+
 export class GitHubError extends Error {
   constructor(
     message: string,

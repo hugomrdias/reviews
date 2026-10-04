@@ -6,6 +6,7 @@ import { UserMenu } from '@/components/shell/UserMenu'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { isSafeReturnTo, loginUrl } from '@/lib/auth'
 import { reposQuery } from '@/lib/queries'
 import { cn } from '@/lib/utils'
 import type { SessionUser } from '@/server/auth/session'
@@ -14,17 +15,7 @@ export const Route = createFileRoute('/')({
   validateSearch: z.object({
     signin: z.optional(z.enum(['failed', 'expired', 'cancelled'])),
     // Where to go after signing in. Same-site paths only; /auth/login checks again.
-    returnTo: z.catch(
-      z.optional(
-        z
-          .string()
-          .check(
-            z.maxLength(2048),
-            z.refine((v) => v.startsWith('/') && !v.startsWith('//') && !v.startsWith('/\\')),
-          ),
-      ),
-      undefined,
-    ),
+    returnTo: z.catch(z.optional(z.string().check(z.maxLength(2048), z.refine(isSafeReturnTo))), undefined),
   }),
   loader: async ({ context }) => {
     if (!context.viewer) return
@@ -74,6 +65,15 @@ function Specimen() {
   )
 }
 
+function Brand() {
+  return (
+    <p className="flex items-center gap-2 text-sm font-semibold">
+      <span className="inline-block h-3 w-5 rounded-[2px] bg-marker-strong" aria-hidden />
+      Reviews
+    </p>
+  )
+}
+
 function Credit({ className }: { className?: string }) {
   return (
     <footer className={cn('text-sm text-muted-foreground', className)}>
@@ -90,14 +90,18 @@ const SIGNIN_MESSAGES = {
   failed: "GitHub didn't complete the sign-in. Try again.",
 } as const
 
+function SignInTo({ returnTo }: { returnTo: string }) {
+  return (
+    <>
+      Sign in to open <span className="font-medium break-all text-foreground">{returnTo.slice(1)}</span>.
+    </>
+  )
+}
+
 function Welcome({ signin, returnTo }: { signin?: 'failed' | 'expired' | 'cancelled'; returnTo?: string }) {
-  const loginHref = returnTo ? `/auth/login?returnTo=${encodeURIComponent(returnTo)}` : '/auth/login'
   return (
     <div className="mx-auto flex min-h-dvh max-w-6xl flex-col px-6 py-10 md:py-16">
-      <p className="flex items-center gap-2 text-sm font-semibold">
-        <span className="inline-block h-3 w-5 rounded-[2px] bg-marker-strong" aria-hidden />
-        Reviews
-      </p>
+      <Brand />
 
       <main className="grid flex-1 items-center gap-14 py-14 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-24">
         <div className="flex flex-col gap-6">
@@ -115,7 +119,7 @@ function Welcome({ signin, returnTo }: { signin?: 'failed' | 'expired' | 'cancel
                 {returnTo && (
                   <>
                     {' '}
-                    Sign in to open <span className="font-medium break-all text-foreground">{returnTo.slice(1)}</span>.
+                    <SignInTo returnTo={returnTo} />
                   </>
                 )}
               </AlertDescription>
@@ -127,12 +131,12 @@ function Welcome({ signin, returnTo }: { signin?: 'failed' | 'expired' | 'cancel
           ) : returnTo ? (
             <Alert>
               <AlertDescription>
-                Sign in to open <span className="font-medium break-all text-foreground">{returnTo.slice(1)}</span>.
+                <SignInTo returnTo={returnTo} />
               </AlertDescription>
             </Alert>
           ) : null}
           <div className="flex flex-col items-start gap-3">
-            <a href={loginHref} className={cn(buttonVariants({ size: 'lg' }))}>
+            <a href={loginUrl(returnTo)} className={cn(buttonVariants({ size: 'lg' }))}>
               <GitHubMark /> {signin === 'cancelled' ? 'Try again' : 'Sign in with GitHub'}
             </a>
             <p className="text-sm text-muted-foreground">
@@ -162,10 +166,7 @@ function Repositories({ viewer }: { viewer: SessionUser }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="flex items-center justify-between border-b px-4 py-2 md:px-8">
-        <p className="flex items-center gap-2 text-sm font-semibold">
-          <span className="inline-block h-3 w-5 rounded-[2px] bg-marker-strong" aria-hidden />
-          Reviews
-        </p>
+        <Brand />
         <UserMenu viewer={viewer} />
       </header>
 

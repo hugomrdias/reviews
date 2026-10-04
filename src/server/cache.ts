@@ -33,7 +33,8 @@ function cacheRequest(key: string) {
   return new Request(`https://cache.internal/${encodeURIComponent(key)}`)
 }
 
-function edgeCache(): Cache | null {
+/** The Workers Cache API's default cache, or null where there isn't one. */
+export function edgeCache(): Cache | null {
   return typeof caches !== 'undefined' && 'default' in caches
     ? (caches as unknown as { default: Cache }).default
     : null

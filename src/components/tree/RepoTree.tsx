@@ -47,10 +47,8 @@ export function RepoTree({ owner, repo, ref, sha, paths, path, counts, preloaded
   const navigate = useNavigate()
   const { theme } = useTheme()
   const pathSet = useMemo(() => new Set(paths), [paths])
-  const countsRef = useRef(counts)
-  countsRef.current = counts
-  const current = useRef({ path, ref, pathSet, onOpenFile })
-  current.current = { path, ref, pathSet, onOpenFile }
+  const current = useRef({ path, ref, pathSet, onOpenFile, counts })
+  current.current = { path, ref, pathSet, onOpenFile, counts }
   // Set while the route drives the selection, so it doesn't navigate back.
   const syncing = useRef(false)
 
@@ -71,7 +69,7 @@ export function RepoTree({ owner, repo, ref, sha, paths, path, counts, preloaded
     },
     renderRowDecoration: ({ item }) => {
       if (item.kind !== 'file') return null
-      const n = countsRef.current[item.path]
+      const n = current.current.counts[item.path]
       return n ? { text: String(n), title: n === 1 ? '1 open comment' : `${n} open comments` } : null
     },
   }))

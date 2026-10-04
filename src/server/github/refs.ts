@@ -1,8 +1,6 @@
 import { FULL_SHA_PATTERN } from '@/lib/refs'
 import { cached } from '../cache'
-import { GitHubError, githubFetch, githubJson, NotFoundError } from './client'
-
-export const FULL_SHA = FULL_SHA_PATTERN
+import { GitHubError, githubFetch, githubJson, NotFoundError, repoBase } from './client'
 
 export interface Location {
   /** The ref as written in the URL: branch, tag or SHA. */
@@ -58,6 +56,19 @@ function commitShaFor(token: string, base: string, ref: string) {
   )
 }
 
+/**
+ * The commit a branch, tag or SHA resolves to, or null when GitHub doesn't
+ * know it. The commits API answers 422 when the ref doesn't resolve to a commit.
+ */
+export async function findCommitSha(token: string, owner: string, repo: string, ref: string) {
+  try {
+    return await commitShaFor(token, repoBase(owner, repo), ref)
+  } catch (error) {
+    if (error instanceof NotFoundError || (error instanceof GitHubError && error.status === 422)) return null
+    throw error
+  }
+}
+
 function matchRefs(token: string, base: string, kind: 'heads' | 'tags', prefix: string) {
   return cached(
     `matching-refs:${base}:${kind}:${prefix}`,
@@ -86,13 +97,13 @@ export async function resolveLocation(
   defaultBranch: string,
 ): Promise<Location> {
   const clean = splat.replace(/^\/+|\/+$/g, '')
-  const base = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`
+  const base = repoBase(owner, repo)
 
   if (!clean) {
     return { ref: defaultBranch, sha: await commitShaFor(token, base, defaultBranch), path: '' }
   }
   const first = clean.split('/')[0]
-  if (FULL_SHA.test(first)) return { ref: first, sha: first, path: splitRefPath(clean, first) }
+  if (FULL_SHA_PATTERN.test(first)) return { ref: first, sha: first, path: splitRefPath(clean, first) }
 
   for (const kind of ['heads', 'tags'] as const) {
     const refs = await matchRefs(token, base, kind, first)
@@ -108,13 +119,7 @@ export async function resolveLocation(
     return { ref: name, sha, path: splitRefPath(clean, name) }
   }
 
-  try {
-    return { ref: first, sha: await commitShaFor(token, base, first), path: splitRefPath(clean, first) }
-  } catch (error) {
-    // The commits API answers 422 when the ref doesn't resolve to a commit.
-    if (error instanceof NotFoundError || (error instanceof GitHubError && error.status === 422)) {
-      throw new NotFoundError(`Unknown ref: ${first}`, 404)
-    }
-    throw error
-  }
+  const sha = await findCommitSha(token, owner, repo, first)
+  if (!sha) throw new NotFoundError(`Unknown ref: ${first}`, 404)
+  return { ref: first, sha, path: splitRefPath(clean, first) }
 }

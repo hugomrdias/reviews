@@ -1,6 +1,7 @@
 import { useQueries } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
-import { anchorLines } from '@/lib/anchoring/line-anchor'
+import { unchangedLines } from '@/lib/anchoring/line-anchor'
+import { placeLines, recordedLines } from '@/lib/anchoring/place'
 import { anchorText, type AnchorState } from '@/lib/anchoring/text-anchor'
 import type { FileResult } from '@/functions/content'
 import { fileQuery } from '@/lib/queries'
@@ -61,34 +62,25 @@ export function useAnchoredThreads({ owner, repo, path, threads, blobSha, source
     combine,
   })
 
-  return useMemo<AnchoredThread[]>(
-    () =>
-      threads.map((thread) => {
-        const sameBlob = thread.blobSha === blobSha
-        const { anchor } = thread
-        if (anchor.kind === 'lines') {
-          const result = anchorLines(source, anchor, sameBlob, oldSources.get(thread.commitSha))
-          return result.state === 'outdated'
-            ? { thread, state: 'outdated' }
-            : { thread, state: result.state, lines: { start: result.lineStart, end: result.lineEnd } }
-        }
-        if (renderedText !== null) {
-          const result = anchorText(renderedText, anchor, sameBlob)
-          return result.state === 'outdated'
-            ? { thread, state: 'outdated' }
-            : { thread, state: result.state, text: { start: result.start, end: result.end } }
-        }
-        // Source view: place rendered-text comments at their recorded lines
-        // when the file hasn't changed; otherwise list them without a spot.
-        if (sameBlob && anchor.lineStart !== null) {
-          return {
-            thread,
-            state: 'attached',
-            lines: { start: anchor.lineStart, end: anchor.lineEnd ?? anchor.lineStart },
-          }
-        }
-        return { thread, state: 'unplaced' }
-      }),
-    [threads, blobSha, source, renderedText, oldSources],
-  )
+  return useMemo<AnchoredThread[]>(() => {
+    const file = { source, blobSha }
+    // One diff per old commit, shared by its threads, and only if one needs it.
+    const unchanged = new Map([...oldSources].map(([sha, old]) => [sha, unchangedLines(old, source)]))
+    return threads.map((thread) => {
+      if (thread.anchor.kind === 'lines') {
+        const { state, lines } = placeLines(thread, file, unchanged.get(thread.commitSha))
+        return lines ? { thread, state, lines } : { thread, state }
+      }
+      if (renderedText !== null) {
+        const result = anchorText(renderedText, thread.anchor, thread.blobSha === blobSha)
+        return result.state === 'outdated'
+          ? { thread, state: 'outdated' }
+          : { thread, state: result.state, text: { start: result.start, end: result.end } }
+      }
+      // Source view: place rendered-text comments at their recorded lines
+      // when the file hasn't changed; otherwise list them without a spot.
+      const lines = recordedLines(thread, blobSha)
+      return lines ? { thread, state: 'attached', lines } : { thread, state: 'unplaced' }
+    })
+  }, [threads, blobSha, source, renderedText, oldSources])
 }

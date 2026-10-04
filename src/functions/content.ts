@@ -28,10 +28,8 @@ export interface RepoSummary {
 
 export type LocationResult =
   | { status: 'ok'; repo: RepoSummary; location: Location }
-  | { status: 'not_found' }
   | { status: 'rate_limited'; resetAt: number }
-  | { status: 'repo_not_selected'; owner: string; settingsUrl: string }
-  | { status: 'app_not_installed'; owner: string; installUrl: string }
+  | NoAccess
 
 /**
  * Resolves a viewer URL. Returns a result instead of throwing so the page can
@@ -49,13 +47,7 @@ export const resolveLocation = createServerFn({ method: 'GET' })
           return diagnoseNoAccess(session, data.owner)
         },
       )
-      if ('kind' in access) {
-        if (access.kind === 'not_found') return { status: 'not_found' }
-        if (access.kind === 'repo_not_selected') {
-          return { status: access.kind, owner: access.owner, settingsUrl: access.settingsUrl }
-        }
-        return { status: access.kind, owner: access.owner, installUrl: access.installUrl }
-      }
+      if ('status' in access) return access
       const location = await resolve(
         session.accessToken,
         access.owner,

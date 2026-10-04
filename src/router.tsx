@@ -2,14 +2,14 @@ import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { PageError, PageNotFound } from '@/components/states/States'
+import { loginUrl, UNAUTHENTICATED } from '@/lib/auth'
 import { routeTree } from './routeTree.gen'
 
 /** A session that died mid-visit: send the person back through sign-in. */
 function onError(error: unknown) {
   if (typeof window === 'undefined' || window.location.pathname.startsWith('/dev/')) return
-  if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
-    const returnTo = window.location.pathname + window.location.search
-    window.location.assign(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`)
+  if (error instanceof Error && error.message === UNAUTHENTICATED) {
+    window.location.assign(loginUrl(window.location.pathname + window.location.search))
   }
 }
 

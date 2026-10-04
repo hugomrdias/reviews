@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
 import type { ThreadMutations } from '@/hooks/useThreadMutations'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
-import { isMarkdown } from '@/lib/paths'
+import { basename, isMarkdown } from '@/lib/paths'
 import type { SessionUser } from '@/server/auth/session'
 import { DiffsOnly, MultiFileDiff } from './diffs'
 import { useDiffsTheme } from './diffs-options'
@@ -43,7 +43,7 @@ export function CompareView({
 }: CompareViewProps) {
   const diffsTheme = useDiffsTheme()
   const wide = useMediaQuery('(min-width: 1024px)')
-  const name = path.split('/').pop() ?? 'file'
+  const name = basename(path)
 
   const oldFile = useMemo(
     () => (base.text === null ? null : { name, contents: base.text, cacheKey: `${base.sha}:${path}` }),
@@ -68,15 +68,12 @@ export function CompareView({
   const annotations = useMemo(() => {
     const list: DiffLineAnnotation<AnchoredThread>[] = []
     const placed = new Set<string>()
-    for (const a of onHead) {
-      if (!a.lines || a.thread.status === 'resolved' || a.state === 'outdated' || a.state === 'unplaced') continue
-      list.push({ side: 'additions', lineNumber: a.lines.end, metadata: a })
-      placed.add(a.thread.id)
-    }
-    for (const a of onBase) {
-      if (placed.has(a.thread.id) || !a.lines || a.thread.status === 'resolved') continue
-      if (a.state === 'outdated' || a.state === 'unplaced') continue
-      list.push({ side: 'deletions', lineNumber: a.lines.end, metadata: a })
+    for (const [side, threads] of [['additions', onHead], ['deletions', onBase]] as const) {
+      for (const a of threads) {
+        if (!a.lines || a.thread.status === 'resolved' || placed.has(a.thread.id)) continue
+        list.push({ side, lineNumber: a.lines.end, metadata: a })
+        placed.add(a.thread.id)
+      }
     }
     return list
   }, [onHead, onBase])

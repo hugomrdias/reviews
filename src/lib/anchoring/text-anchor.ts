@@ -1,5 +1,5 @@
 import type { AnchorData } from '../threads'
-import { exactMatches, matchQuote, scoreMatch } from './match-quote'
+import { isCloseMatch, matchQuote } from './match-quote'
 
 /**
  * - attached: the quoted text is still there.
@@ -11,10 +11,6 @@ export type AnchorState = 'attached' | 'edited' | 'outdated'
 export type TextAnchorResult =
   | { state: 'attached' | 'edited'; start: number; end: number }
   | { state: 'outdated' }
-
-/** Fuzzy matches above this share of errors count as gone, not edited. */
-const MAX_ERROR_RATIO = 0.25
-const MIN_SCORE = 0.5
 
 /** Places a text-selection comment in the current rendered text. */
 export function anchorText(text: string, anchor: AnchorData, sameBlob: boolean): TextAnchorResult {
@@ -31,24 +27,9 @@ export function anchorText(text: string, anchor: AnchorData, sameBlob: boolean):
     return { state: 'attached', start: anchor.textStart, end: anchor.textEnd }
   }
 
-  const exact = exactMatches(text, quote)
-  if (exact.length === 1) return { state: 'attached', start: exact[0].start, end: exact[0].end }
-  if (exact.length > 1) {
-    let best = exact[0]
-    let bestScore = -1
-    for (const m of exact) {
-      const score = scoreMatch(text, quote, m, context)
-      if (score > bestScore) {
-        best = m
-        bestScore = score
-      }
-    }
-    return { state: 'attached', start: best.start, end: best.end }
-  }
-
-  const fuzzy = matchQuote(text, quote, context)
-  if (fuzzy && fuzzy.errors <= quote.length * MAX_ERROR_RATIO && fuzzy.score >= MIN_SCORE) {
-    return { state: 'edited', start: fuzzy.start, end: fuzzy.end }
-  }
+  // An exact copy wins; among several, the one whose context and position fit best.
+  const match = matchQuote(text, quote, context)
+  if (match?.errors === 0) return { state: 'attached', start: match.start, end: match.end }
+  if (match && isCloseMatch(match, quote)) return { state: 'edited', start: match.start, end: match.end }
   return { state: 'outdated' }
 }
