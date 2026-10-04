@@ -2,47 +2,25 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import * as store from '@/server/comments/store'
 import { getDb } from '@/server/db/client'
-import { requireRepoAccess } from '@/server/github/access'
-import { NotFoundError } from '@/server/github/client'
-import { authMiddleware } from '@/server/middleware'
-import type { ActiveSession } from '@/server/auth/session'
+import { commentableRepoMiddleware, repoMiddleware } from '@/server/middleware'
 import { anchorSchema, bodySchema, pathSchema, repoInput, shaSchema } from './schemas'
 
-/** Comment access follows repo access: no read access, no comments. */
-async function repoFor(session: ActiveSession, owner: string, repo: string) {
-  try {
-    return await requireRepoAccess(session, owner, repo)
-  } catch (error) {
-    if (error instanceof NotFoundError) throw new Error('NO_ACCESS')
-    throw error
-  }
-}
-
-/** Writing a comment needs write access to the repo, not just read. */
-async function commentableRepo(session: ActiveSession, owner: string, repo: string) {
-  const access = await repoFor(session, owner, repo)
-  if (!access.permissions.comment) throw new Error('NO_WRITE_ACCESS')
-  return access
-}
-
 export const listThreads = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([repoMiddleware])
   .validator(repoInput.extend({ path: pathSchema }))
-  .handler(async ({ data, context: { session } }) => {
-    const access = await repoFor(session, data.owner, data.repo)
+  .handler(async ({ data, context: { access } }) => {
     return store.listThreads(getDb(), access.repoId, data.path)
   })
 
 export const getThreadCounts = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([repoMiddleware])
   .validator(repoInput)
-  .handler(async ({ data, context: { session } }) => {
-    const access = await repoFor(session, data.owner, data.repo)
+  .handler(async ({ context: { access } }) => {
     return store.openThreadCounts(getDb(), access.repoId)
   })
 
 export const createThread = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([commentableRepoMiddleware])
   .validator(
     repoInput.extend({
       path: pathSchema.min(1),
@@ -52,8 +30,7 @@ export const createThread = createServerFn({ method: 'POST' })
       body: bodySchema,
     }),
   )
-  .handler(async ({ data, context: { session } }) => {
-    const access = await commentableRepo(session, data.owner, data.repo)
+  .handler(async ({ data, context: { session, access } }) => {
     const id = await store.createThread(getDb(), session.user.id, {
       repoId: access.repoId,
       repoFullName: access.fullName,
@@ -68,34 +45,30 @@ export const createThread = createServerFn({ method: 'POST' })
   })
 
 export const addComment = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([commentableRepoMiddleware])
   .validator(repoInput.extend({ threadId: z.uuid(), body: bodySchema }))
-  .handler(async ({ data, context: { session } }) => {
-    const access = await commentableRepo(session, data.owner, data.repo)
+  .handler(async ({ data, context: { session, access } }) => {
     const id = await store.addComment(getDb(), session.user.id, access.repoId, data.threadId, data.body, null)
     return { id }
   })
 
 export const editComment = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([commentableRepoMiddleware])
   .validator(repoInput.extend({ commentId: z.uuid(), body: bodySchema }))
-  .handler(async ({ data, context: { session } }) => {
-    const access = await commentableRepo(session, data.owner, data.repo)
+  .handler(async ({ data, context: { session, access } }) => {
     await store.editComment(getDb(), session.user.id, access.repoId, data.commentId, data.body)
   })
 
 export const deleteComment = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([commentableRepoMiddleware])
   .validator(repoInput.extend({ commentId: z.uuid() }))
-  .handler(async ({ data, context: { session } }) => {
-    const access = await commentableRepo(session, data.owner, data.repo)
+  .handler(async ({ data, context: { session, access } }) => {
     await store.deleteComment(getDb(), session.user.id, access.repoId, data.commentId)
   })
 
 export const setThreadStatus = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([commentableRepoMiddleware])
   .validator(repoInput.extend({ threadId: z.uuid(), status: z.enum(['open', 'resolved']) }))
-  .handler(async ({ data, context: { session } }) => {
-    const access = await commentableRepo(session, data.owner, data.repo)
+  .handler(async ({ data, context: { session, access } }) => {
     await store.setThreadStatus(getDb(), session.user.id, access.repoId, data.threadId, data.status, access.permissions)
   })

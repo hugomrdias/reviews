@@ -6,9 +6,10 @@ import { env } from 'cloudflare:test'
 import { describe, expect, it } from 'vitest'
 import { getDb } from '../db/client'
 import type { RepoAccess } from '../github/access'
+import { AuthError, GitHubError, NotFoundError, RateLimitError } from '../github/client'
 import { READ, WRITE, type AgentProps } from './grant'
-import { buildServer, instructions, mcpHandler } from './mcp'
-import type { RepoReader } from './tools'
+import { agentErrorMessage, buildServer, instructions, mcpHandler } from './mcp'
+import { ToolError, type RepoReader } from './tools'
 
 const repo: RepoAccess = {
   repoId: 1,
@@ -28,8 +29,8 @@ const github: RepoReader = {
   commit: async () => null,
 }
 
-async function connect() {
-  const server = buildServer({ db: getDb(), appUrl: 'http://localhost:3000', github, agent: { userId: 1, clientName: 'Test' } })
+async function connect(reader: RepoReader = github) {
+  const server = buildServer({ db: getDb(), appUrl: 'http://localhost:3000', github: reader, agent: { userId: 1, clientName: 'Test' } })
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair()
   await server.connect(serverSide)
   const client = new Client({ name: 'test', version: '1.0.0' })
@@ -62,6 +63,51 @@ describe('the MCP server', () => {
       arguments: { repo: 'acme/docs', threadId: crypto.randomUUID(), body: 'Hi' },
     })
     expect(result).toMatchObject({ isError: true, content: [{ type: 'text', text: expect.stringMatching(/^No thread/) }] })
+  })
+})
+
+describe('agentErrorMessage', () => {
+  it.each([
+    ['a tool error', new ToolError('No thread abc in acme/docs.'), /^No thread abc/],
+    ['a repo it cannot read', new NotFoundError('Not found: /repos/acme/secret', 404), /doesn't exist, or the person you act for can't read it/],
+    ['a revoked GitHub token', new AuthError('GitHub rejected the token', 401), /Disconnect the agent in Reviews/],
+    ['the rate limit', new RateLimitError(Date.UTC(2026, 9, 4, 12)), /until 2026-10-04T12:00:00.000Z/],
+  ])('explains %s', (_, error, message) => {
+    expect(agentErrorMessage(error)).toMatch(message)
+  })
+
+  it.each([
+    ['a GitHub outage', new GitHubError('GitHub 502 for /repos/acme/docs', 502)],
+    ['a bug', new TypeError("Cannot read properties of undefined (reading 'sha')")],
+    ['a thrown string', 'oops'],
+  ])('leaves %s to stay an error', (_, error) => {
+    expect(agentErrorMessage(error)).toBeNull()
+  })
+})
+
+describe('the address_comments prompt', () => {
+  const failing = (error: unknown): RepoReader => ({
+    ...github,
+    access: async () => {
+      throw error
+    },
+  })
+  const promptText = async (reader: RepoReader) => {
+    const client = await connect(reader)
+    const { messages } = await client.getPrompt({ name: 'address_comments', arguments: { repo: 'acme/secret' } })
+    return (messages[0].content as { text: string }).text
+  }
+
+  it('explains a repo the agent cannot read the way the tools do', async () => {
+    const text = await promptText(failing(new NotFoundError('Not found: /repos/acme/secret', 404)))
+    expect(text).toContain(`Couldn't list the threads: ${agentErrorMessage(new NotFoundError('', 404))}`)
+    expect(text).not.toContain('/repos/acme/secret')
+  })
+
+  it('fails as a request instead of putting other errors in the prompt', async () => {
+    const client = await connect(failing(new Error('D1_ERROR: no such table: threads')))
+    const result = client.getPrompt({ name: 'address_comments', arguments: { repo: 'acme/secret' } })
+    await expect(result).rejects.toThrow(/^MCP error -32603/)
   })
 })
 
