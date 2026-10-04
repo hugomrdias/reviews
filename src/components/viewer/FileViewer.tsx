@@ -24,7 +24,14 @@ import {
   UnviewableFile,
 } from '@/components/states/States'
 import { Button } from '@/components/ui/button'
-import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerVirtualKeyboardProvider,
+} from '@/components/ui/drawer'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAnchoredThreads } from '@/hooks/useAnchoredThreads'
@@ -405,28 +412,32 @@ function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, sear
           }
         }}
       >
-        <DrawerContent className="max-h-[85dvh]">
-          <DrawerHeader className="text-left">
-            <DrawerTitle>{draft ? 'New comment' : 'Comment'}</DrawerTitle>
-            <DrawerDescription className="line-clamp-2 font-serif italic">
-              {draft?.quoteExact ?? activeThread?.thread.anchor.quoteExact}
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="overflow-y-auto px-4 pb-6">
-            {draft ? (
-              <Composer
-                placeholder="Add a comment"
-                submitLabel="Comment"
-                autoFocus
-                pending={mutations.create.isPending}
-                onCancel={() => setDraft(null)}
-                onSubmit={submitDraft}
-              />
-            ) : activeThread ? (
-              <ThreadCard inline anchored={activeThread} location={threadLocation} viewer={viewer} mutations={mutations} active />
-            ) : null}
-          </div>
-        </DrawerContent>
+        {/* The provider pins the page and sets --drawer-keyboard-inset while a field has focus.
+            The sheet is short, so lift it above the keyboard rather than scrolling inside it. */}
+        <DrawerVirtualKeyboardProvider>
+          <DrawerContent className="max-h-[calc(85dvh-var(--drawer-keyboard-inset,0px))] data-[swipe-direction=down]:bottom-(--drawer-keyboard-inset,0px)">
+            <DrawerHeader className="text-left">
+              <DrawerTitle>{draft ? 'New comment' : 'Comment'}</DrawerTitle>
+              <DrawerDescription className="line-clamp-2 font-serif italic">
+                {draft?.quoteExact ?? activeThread?.thread.anchor.quoteExact}
+              </DrawerDescription>
+            </DrawerHeader>
+            <div className="overflow-y-auto px-4 pt-1 pb-6">
+              {draft ? (
+                <Composer
+                  placeholder="Add a comment"
+                  submitLabel="Comment"
+                  autoFocus
+                  pending={mutations.create.isPending}
+                  onCancel={() => setDraft(null)}
+                  onSubmit={submitDraft}
+                />
+              ) : activeThread ? (
+                <ThreadCard inline anchored={activeThread} location={threadLocation} viewer={viewer} mutations={mutations} active />
+              ) : null}
+            </div>
+          </DrawerContent>
+        </DrawerVirtualKeyboardProvider>
       </Drawer>
 
       {!showMargin && view === 'rendered' && groups.open.length > 0 && !mobileDrawerOpen && (

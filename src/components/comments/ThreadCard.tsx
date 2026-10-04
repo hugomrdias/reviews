@@ -70,7 +70,7 @@ function Comment({
                   ref={menuTrigger}
                   variant="ghost"
                   size="icon"
-                  className="ml-auto size-6 opacity-0 group-hover/comment:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100"
+                  className="ml-auto size-6 [@media(hover:hover)]:opacity-0 group-hover/comment:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100"
                   aria-label="Comment actions"
                 />
               }
