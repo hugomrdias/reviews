@@ -1,6 +1,7 @@
 import { OAuthAuthorizationServer, OAuthError, OAuthResourceServer } from '@cloudflare/workers-oauth-provider'
 import { OAuthError as GitHubOAuthError, refreshTokens } from '../auth/oauth'
 import { READ, SCOPES, type AgentProps } from './grant'
+import { agentGuide, prefersMarkdown } from './guide'
 import { mcpHandler } from './mcp'
 
 // Agents connect over MCP and sign in with OAuth 2.1. This Worker is their
@@ -17,6 +18,7 @@ export const AUTHORIZE_PATH = '/oauth/authorize'
 const TOKEN_PATH = '/oauth/token'
 const REGISTER_PATH = '/oauth/register'
 export const MCP_PATH = '/mcp'
+const GUIDE_PATH = '/llms.txt'
 
 export function mcpUrl(appUrl: string) {
   return new URL(MCP_PATH, appUrl).toString()
@@ -80,9 +82,10 @@ async function refreshGitHub({ grantType, props }: { grantType: string; props: A
 }
 
 /**
- * Requests for the MCP endpoint and the protocol's OAuth endpoints, or null
- * for everything else, which TanStack Start serves. Our own OAuth pages
- * (authorize, callback) are Start routes.
+ * Requests for the MCP endpoint, the protocol's OAuth endpoints, the agent
+ * guide and the rest of `/.well-known/`, or null for everything else, which
+ * TanStack Start serves. Our own OAuth pages (authorize, callback) are Start
+ * routes.
  */
 export function routeAgentRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> | null {
   const { pathname } = new URL(request.url)
@@ -96,5 +99,19 @@ export function routeAgentRequest(request: Request, env: Env, ctx: ExecutionCont
   ) {
     return serversFor(env).auth.fetch(request, env, ctx)
   }
+  // The home page stays HTML for browsers. Agents that ask for markdown get the guide.
+  const markdownHome = pathname === '/' && prefersMarkdown(request.headers.get('Accept'))
+  if ((request.method === 'GET' || request.method === 'HEAD') && (pathname === GUIDE_PATH || markdownHome)) {
+    return Promise.resolve(guide(request, env, markdownHome))
+  }
+  // Clients probe other discovery paths, like OpenID's, and need a 404, not
+  // the repo route reading `.well-known` as an owner and redirecting to sign in.
+  if (pathname.startsWith('/.well-known/')) return Promise.resolve(new Response(null, { status: 404 }))
   return null
+}
+
+function guide(request: Request, env: Env, negotiated: boolean) {
+  const headers = new Headers({ 'Content-Type': 'text/markdown; charset=utf-8' })
+  if (negotiated) headers.set('Vary', 'Accept')
+  return new Response(request.method === 'HEAD' ? null : agentGuide(env.APP_URL, mcpUrl(env.APP_URL)), { headers })
 }

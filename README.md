@@ -36,7 +36,9 @@ Reviews is an MCP server at `/mcp`. In Claude Code, from the repository you're w
 claude mcp add --transport http reviews https://reviews.hugodias.me/mcp
 ```
 
-The first time the agent uses it, a browser opens: you approve the connection in Reviews, then GitHub signs you in. The agent then acts as you, with your GitHub access. It has four tools: `list_threads` and `get_thread` show threads placed on a commit, with their current lines; `reply` comments on a thread; `mark_addressed` replies and marks a thread addressed, with the commit that fixed it. The `address_comments` prompt (`/mcp__reviews__address_comments` in Claude Code) lists a repository's open threads with the working rules.
+Then sign in from `/mcp` in Claude Code. A browser opens: you approve the connection in Reviews, then GitHub signs you in. The agent then acts as you, with your GitHub access. It has four tools: `list_threads` and `get_thread` show threads placed on a commit, with their current lines; `reply` comments on a thread; `mark_addressed` replies and marks a thread addressed, with the commit that fixed it. The `address_comments` prompt (`/mcp__reviews__address_comments` in Claude Code) lists a repository's open threads with the working rules.
+
+Or tell the agent to "use reviews.hugodias.me to address the comments on this repo". `/llms.txt` explains to agents how to connect and what to do (`/` serves the same guide to clients that ask for markdown), and the MCP server's instructions name the site, so the agent finds the tools once they're connected.
 
 See and disconnect agents from your menu, under **Connected agents**. The design is in `docs/design/mcp-server.md`.
 

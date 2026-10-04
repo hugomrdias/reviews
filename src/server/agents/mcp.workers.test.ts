@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { getDb } from '../db/client'
 import type { RepoAccess } from '../github/access'
 import { READ, WRITE, type AgentProps } from './grant'
-import { buildServer, INSTRUCTIONS, mcpHandler } from './mcp'
+import { buildServer, instructions, mcpHandler } from './mcp'
 import type { RepoReader } from './tools'
 
 const repo: RepoAccess = {
@@ -44,7 +44,8 @@ describe('the MCP server', () => {
     expect(tools.map((t) => t.name).sort()).toEqual(['get_thread', 'list_threads', 'mark_addressed', 'reply'])
     expect(tools.find((t) => t.name === 'list_threads')?.annotations?.readOnlyHint).toBe(true)
     expect((await client.listPrompts()).prompts.map((p) => p.name)).toEqual(['address_comments'])
-    expect(client.getInstructions()).toBe(INSTRUCTIONS)
+    expect(client.getInstructions()).toBe(instructions('http://localhost:3000'))
+    expect(client.getInstructions()).toMatch(/^Reviews \(localhost:3000\)/)
   })
 
   it('returns threads as structured content and as text', async () => {
@@ -105,7 +106,7 @@ describe('the MCP endpoint', () => {
     expect(res.status).toBe(200)
     const body = (await res.json()) as { result: { serverInfo: { name: string }; instructions: string } }
     expect(body.result.serverInfo.name).toBe('reviews')
-    expect(body.result.instructions).toBe(INSTRUCTIONS)
+    expect(body.result.instructions).toBe(instructions(env.APP_URL))
     expect(res.headers.get('mcp-session-id')).toBeNull()
   })
 })
