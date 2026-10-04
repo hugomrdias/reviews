@@ -41,6 +41,7 @@ function thread(anchor: Partial<AnchorData>, blobSha = OLD): ThreadView {
     status: 'open',
     resolvedBy: null,
     resolvedAt: null,
+    addressed: null,
     author: { id: 1, login: 'maya', name: null, avatarUrl: null },
     createdAt: 0,
     updatedAt: 0,

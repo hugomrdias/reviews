@@ -9,18 +9,30 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
 import type { SessionUser } from '@/server/auth/session'
 import { ThreadCard, type ThreadLocation } from './ThreadCard'
 
+export type SheetTab = 'open' | 'addressed' | 'outdated' | 'resolved'
+
 export function groupThreads(anchored: AnchoredThread[]) {
   const open = anchored.filter((a) => a.thread.status === 'open' && a.state !== 'outdated')
+  // Addressed threads wait for a person wherever their text went, so they get one list.
+  const addressed = anchored.filter((a) => a.thread.status === 'addressed')
   const outdated = anchored.filter((a) => a.thread.status === 'open' && a.state === 'outdated')
   const resolved = anchored.filter((a) => a.thread.status === 'resolved')
-  return { open, outdated, resolved }
+  return { open, addressed, outdated, resolved }
+}
+
+/** The tab to open the sheet on: the first one with something waiting. */
+export function firstTab(groups: ReturnType<typeof groupThreads>): SheetTab {
+  if (groups.open.length > 0) return 'open'
+  if (groups.addressed.length > 0) return 'addressed'
+  if (groups.outdated.length > 0) return 'outdated'
+  return 'open'
 }
 
 interface CommentsSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  tab: 'open' | 'outdated' | 'resolved'
-  onTabChange: (tab: 'open' | 'outdated' | 'resolved') => void
+  tab: SheetTab
+  onTabChange: (tab: SheetTab) => void
   anchored: AnchoredThread[]
   location: ThreadLocation
   viewer: SessionUser | null
@@ -50,7 +62,7 @@ function ThreadList({
             active={active === a.thread.id}
             onActivate={() => setActive(a.thread.id)}
           />
-          {(a.state === 'attached' || a.state === 'edited') && a.thread.status === 'open' && (
+          {(a.state === 'attached' || a.state === 'edited') && a.thread.status !== 'resolved' && (
             <button
               type="button"
               className="ml-4 self-start text-xs text-link hover:underline"
@@ -86,7 +98,8 @@ export function CommentsSheet({
         <SheetHeader className="border-b">
           <SheetTitle>Comments on this file</SheetTitle>
           <SheetDescription>
-            Outdated comments point at text that has since changed or been removed.
+            Addressed comments are ones an agent says it fixed, waiting for a person to confirm. Outdated comments point
+            at text that has since changed or been removed.
             {!rest.mutations.permissions.comment && ' You can read comments here; writing them needs write access to the repository.'}
           </SheetDescription>
           <Button
@@ -103,6 +116,7 @@ export function CommentsSheet({
         <Tabs value={tab} onValueChange={(v) => onTabChange(v as typeof tab)} className="min-h-0 flex-1 gap-0">
           <TabsList activateOnFocus className="mx-4 mt-3 w-[calc(100%-2rem)]">
             <TabsTrigger value="open">Open {groups.open.length}</TabsTrigger>
+            <TabsTrigger value="addressed">Addressed {groups.addressed.length}</TabsTrigger>
             <TabsTrigger value="outdated">Outdated {groups.outdated.length}</TabsTrigger>
             <TabsTrigger value="resolved">Resolved {groups.resolved.length}</TabsTrigger>
           </TabsList>
@@ -115,6 +129,9 @@ export function CommentsSheet({
                 }
                 {...rest}
               />
+            </TabsContent>
+            <TabsContent value="addressed">
+              <ThreadList items={groups.addressed} empty="Nothing waiting to be confirmed." {...rest} />
             </TabsContent>
             <TabsContent value="outdated">
               <ThreadList items={groups.outdated} empty="Every comment still matches the text." {...rest} />

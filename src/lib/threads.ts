@@ -31,15 +31,31 @@ export interface AnchorData {
   lineEnd: number | null
 }
 
+/**
+ * - open: needs work.
+ * - addressed: an agent says it's done; a person confirms or reopens it.
+ * - resolved: done.
+ */
+export type ThreadStatus = 'open' | 'addressed' | 'resolved'
+
+export interface Addressed {
+  by: Author
+  at: number
+  /** The commit with the fix, when the agent gave one. */
+  sha: string | null
+}
+
 export interface ThreadView {
   id: string
   path: string
   commitSha: string
   blobSha: string | null
   anchor: AnchorData
-  status: 'open' | 'resolved'
+  status: ThreadStatus
   resolvedBy: Author | null
   resolvedAt: number | null
+  /** Set once an agent marks the thread addressed, and kept after. */
+  addressed: Addressed | null
   author: Author
   createdAt: number
   updatedAt: number

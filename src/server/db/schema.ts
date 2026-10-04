@@ -50,9 +50,15 @@ export const threads = sqliteTable(
     // 1-based inclusive source lines: exact for 'lines', a hint for 'text'.
     lineStart: integer('line_start'),
     lineEnd: integer('line_end'),
-    status: text('status', { enum: ['open', 'resolved'] }).notNull().default('open'),
+    // open → addressed (an agent says it's fixed) → resolved (a person agrees), or back to open.
+    status: text('status', { enum: ['open', 'addressed', 'resolved'] }).notNull().default('open'),
     resolvedBy: integer('resolved_by').references(() => users.id),
     resolvedAt: integer('resolved_at'),
+    // Kept after the thread is confirmed or reopened, so its history stays readable.
+    addressedBy: integer('addressed_by').references(() => users.id),
+    addressedAt: integer('addressed_at'),
+    // The commit with the fix, when the agent gave one. It may not be pushed yet.
+    addressedSha: text('addressed_sha'),
     authorId: integer('author_id')
       .notNull()
       .references(() => users.id),

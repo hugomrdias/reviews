@@ -176,7 +176,7 @@ In the app:
 - The thread card shows "Addressed by hugomrdias in abc1234" with a link to the change, the Changes view from the thread's commit to `addressed_sha`. It has **Confirm** and **Reopen** where Resolve is today. The agent's reply sits right below, with its badge.
 - Addressed threads keep their place in the margin when they can be placed, drawn with a dashed rule like edited ones, so you can check the change next to the text.
 - The comments sheet gets an **Addressed** tab, between Open and Outdated.
-- Counts that mean "needs a person" include addressed threads: the file tree badges, the header count and the home page's open count. The header adds an "N addressed" chip, like the outdated one.
+- Counts that mean "needs a person" include addressed threads: the file tree badges, the home page's open count and the mobile comments button. The header keeps its open count and adds an "N addressed" chip next to the outdated one.
 
 ## Placing threads on the server
 

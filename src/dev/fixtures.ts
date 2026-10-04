@@ -8,6 +8,8 @@ export const OWNER = 'acme'
 export const REPO = 'handbook'
 export const REF = 'main'
 export const SHA = '3f9c21a8d4e5b6c7d8e9f0a1b2c3d4e5f6a7b8c9'
+/** The commit an agent said fixed a thread. */
+export const FIX_SHA = 'e7d1c0b9a8f7e6d5c4b3a2918273645546372819'
 export const OLD_SHA = '9b1e44c0aa77de1f2b3c4d5e6f708192a3b4c5d6'
 export const DOC = 'docs/release-process.md'
 export const BLOB = 'b'.repeat(40)
@@ -117,6 +119,7 @@ export const threads: ThreadView[] = [
     status: 'open',
     resolvedBy: null,
     resolvedAt: null,
+    addressed: null,
     author: maya,
     createdAt: hours(3),
     updatedAt: hours(2),
@@ -159,6 +162,7 @@ export const threads: ThreadView[] = [
     status: 'open',
     resolvedBy: null,
     resolvedAt: null,
+    addressed: null,
     author: tom,
     createdAt: hours(30),
     updatedAt: hours(30),
@@ -192,6 +196,7 @@ export const threads: ThreadView[] = [
     status: 'open',
     resolvedBy: null,
     resolvedAt: null,
+    addressed: null,
     author: maya,
     createdAt: hours(72),
     updatedAt: hours(72),
@@ -223,6 +228,7 @@ export const threads: ThreadView[] = [
     status: 'resolved',
     resolvedBy: viewer,
     resolvedAt: hours(1),
+    addressed: null,
     author: viewer,
     createdAt: hours(20),
     updatedAt: hours(1),
@@ -253,9 +259,10 @@ export const threads: ThreadView[] = [
       lineStart: 25,
       lineEnd: 26,
     },
-    status: 'open',
+    status: 'addressed',
     resolvedBy: null,
     resolvedAt: null,
+    addressed: { by: viewer, at: hours(4), sha: FIX_SHA },
     author: tom,
     createdAt: hours(5),
     updatedAt: hours(5),

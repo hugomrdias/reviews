@@ -118,7 +118,7 @@ export function DocumentComments({
   useTextHighlights(index, anchored, activeId, draftOffsets)
 
   const onPage = anchored.filter(
-    (a) => a.thread.status === 'open' && (a.state === 'attached' || a.state === 'edited') && (a.text || a.lines),
+    (a) => a.thread.status !== 'resolved' && (a.state === 'attached' || a.state === 'edited') && (a.text || a.lines),
   )
 
   // Where each note wants to sit: level with the top of its text.

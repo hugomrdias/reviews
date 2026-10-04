@@ -1,6 +1,13 @@
 import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
-import { canResolve, type AnchorData, type Author, type CommentPermissions, type ThreadView } from '@/lib/threads'
+import {
+  canResolve,
+  type AnchorData,
+  type Author,
+  type CommentPermissions,
+  type ThreadStatus,
+  type ThreadView,
+} from '@/lib/threads'
 import type { Db } from '../db/client'
 import { comments, threads, users, type User } from '../db/schema'
 
@@ -12,6 +19,10 @@ function toAuthor(u: Pick<User, 'id' | 'login' | 'name' | 'avatarUrl'>): Author 
 }
 
 const resolver = alias(users, 'resolver')
+const addresser = alias(users, 'addresser')
+
+/** Threads that still need a person: open ones, and addressed ones waiting to be confirmed. */
+const needsPerson = inArray(threads.status, ['open', 'addressed'])
 
 /** Every thread on a file, open and resolved, with its comments. */
 export async function listThreads(db: Db, repoId: number, path: string): Promise<ThreadView[]> {
@@ -20,10 +31,11 @@ export async function listThreads(db: Db, repoId: number, path: string): Promise
   // Not db.batch: it maps joined rows by column name, and both tables have an `id`.
   const [rows, commentRows] = await Promise.all([
     db
-      .select({ thread: threads, author: users, resolver })
+      .select({ thread: threads, author: users, resolver, addresser })
       .from(threads)
       .innerJoin(users, eq(users.id, threads.authorId))
       .leftJoin(resolver, eq(resolver.id, threads.resolvedBy))
+      .leftJoin(addresser, eq(addresser.id, threads.addressedBy))
       .where(onFile)
       .orderBy(asc(threads.createdAt)),
     db
@@ -51,7 +63,7 @@ export async function listThreads(db: Db, repoId: number, path: string): Promise
     byThread.set(comment.threadId, list)
   }
 
-  return rows.map(({ thread: t, author, resolver: r }) => ({
+  return rows.map(({ thread: t, author, resolver: r, addresser: a }) => ({
     id: t.id,
     path: t.path,
     commitSha: t.commitSha,
@@ -69,6 +81,7 @@ export async function listThreads(db: Db, repoId: number, path: string): Promise
     status: t.status,
     resolvedBy: r ? toAuthor(r) : null,
     resolvedAt: t.resolvedAt,
+    addressed: a && t.addressedAt !== null ? { by: toAuthor(a), at: t.addressedAt, sha: t.addressedSha } : null,
     author: toAuthor(author),
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
@@ -76,17 +89,17 @@ export async function listThreads(db: Db, repoId: number, path: string): Promise
   }))
 }
 
-/** Open thread count per path, for the file tree. */
+/** Count per path of threads that need a person, for the file tree. */
 export async function openThreadCounts(db: Db, repoId: number) {
   const rows = await db
     .select({ path: threads.path, n: count() })
     .from(threads)
-    .where(and(eq(threads.repoId, repoId), eq(threads.status, 'open')))
+    .where(and(eq(threads.repoId, repoId), needsPerson))
     .groupBy(threads.path)
   return Object.fromEntries(rows.map((r) => [r.path, r.n])) as Record<string, number>
 }
 
-/** Open threads and last activity per repo, for the given repos that have any threads. */
+/** Threads that need a person, and last activity, per repo, for the given repos that have any threads. */
 export async function repoActivity(db: Db, repoIds: number[]) {
   if (repoIds.length === 0) return new Map<number, { open: number; lastActivity: number }>()
   // The ids go in as one JSON parameter: D1 allows only 100 bound parameters.
@@ -94,7 +107,7 @@ export async function repoActivity(db: Db, repoIds: number[]) {
   const rows = await db
     .select({
       repoId: threads.repoId,
-      open: sql<number>`sum(case when ${threads.status} = 'open' then 1 else 0 end)`,
+      open: sql<number>`sum(case when ${threads.status} in ('open', 'addressed') then 1 else 0 end)`,
       lastActivity: sql<number>`max(${threads.updatedAt})`,
     })
     .from(threads)
@@ -206,13 +219,15 @@ export async function setThreadStatus(
   userId: number,
   repoId: number,
   threadId: string,
-  status: 'open' | 'resolved',
+  status: Exclude<ThreadStatus, 'addressed'>,
   permissions: CommentPermissions,
 ) {
   const thread = await threadInRepo(db, threadId, repoId)
   if (!canResolve(permissions, thread.authorId, userId)) {
     throw new ForbiddenError('Only the thread author or a maintainer can change this thread')
   }
+  // Resolving confirms an addressed thread; reopening sends it back. The
+  // addressed_* columns stay either way.
   const now = Date.now()
   await db
     .update(threads)

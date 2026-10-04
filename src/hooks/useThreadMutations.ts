@@ -3,7 +3,7 @@ import { useRouteContext } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { addComment, createThread, deleteComment, editComment, setThreadStatus } from '@/functions/comments'
 import { threadCountsQuery, threadsQuery } from '@/lib/queries'
-import type { AnchorData, CommentPermissions, ThreadView } from '@/lib/threads'
+import type { AnchorData, CommentPermissions, ThreadStatus, ThreadView } from '@/lib/threads'
 
 /**
  * Comment mutations for one file, with optimistic updates where they matter,
@@ -92,7 +92,7 @@ export function useThreadMutations(owner: string, repo: string, path: string, pe
   })
 
   const setStatus = useMutation({
-    mutationFn: (input: { threadId: string; status: 'open' | 'resolved' }) =>
+    mutationFn: (input: { threadId: string; status: Exclude<ThreadStatus, 'addressed'> }) =>
       setThreadStatus({ data: { owner, repo, ...input } }),
     onMutate: ({ threadId, status }) =>
       patch((threads) =>
