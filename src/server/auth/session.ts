@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers'
 import { deleteCookie, getCookie, getRequest, setCookie } from '@tanstack/react-start/server'
 import { eq, lt } from 'drizzle-orm'
 import { getDb, type Db } from '../db/client'
+import { tagInvocation } from '../tracing'
 import { sessions, users, type User } from '../db/schema'
 import { decrypt, deriveKey, encrypt, randomToken, sha256Hex } from './crypto'
 import { OAuthError, refreshTokens, type TokenSet } from './oauth'
@@ -188,5 +189,7 @@ async function readActiveSession(): Promise<ActiveSession | null> {
     await getDb().update(sessions).set({ lastSeenAt: Date.now() }).where(eq(sessions.id, id))
   }
   const { id: userId, login, name, avatarUrl } = found.user
+  // The session ID is the cookie's hash, not the cookie.
+  tagInvocation({ 'user.id': userId, 'user.name': login, 'session.id': id })
   return { id, user: { id: userId, login, name, avatarUrl }, accessToken }
 }

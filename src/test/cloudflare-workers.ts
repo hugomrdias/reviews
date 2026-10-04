@@ -1,6 +1,8 @@
 // Stand-in for the Workers runtime module in unit tests, which run in Node.
 export const env = {}
 
+export const tracing = { getActiveSpan: () => undefined }
+
 const background: Promise<unknown>[] = []
 
 export function waitUntil(promise: Promise<unknown>) {
