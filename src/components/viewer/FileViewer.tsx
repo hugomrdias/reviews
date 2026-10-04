@@ -399,6 +399,7 @@ function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, sear
       />
 
       <Drawer
+        showSwipeHandle
         open={mobileDrawerOpen}
         onOpenChange={(open) => {
           if (!open) {
