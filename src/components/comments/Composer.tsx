@@ -62,7 +62,9 @@ export function Composer({
             e.preventDefault()
             void submit()
           } else if (e.key === 'Escape' && onCancel) {
+            // Cancel only this box, not the sheet or dialog around it.
             e.preventDefault()
+            e.stopPropagation()
             onCancel()
           }
         }}

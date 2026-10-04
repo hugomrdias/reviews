@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Check, Copy, GitCompareArrows, History, MoreHorizontal, RotateCcw } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -52,6 +52,7 @@ function Comment({
   mutations: ThreadMutations
 }) {
   const [editing, setEditing] = useState(false)
+  const menuTrigger = useRef<HTMLButtonElement>(null)
   return (
     <div className="group/comment flex flex-col gap-1">
       <div className="flex items-center gap-2 text-xs">
@@ -66,6 +67,7 @@ function Comment({
             <DropdownMenuTrigger
               render={
                 <Button
+                  ref={menuTrigger}
                   variant="ghost"
                   size="icon"
                   className="ml-auto size-6 opacity-0 group-hover/comment:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100"
@@ -75,7 +77,10 @@ function Comment({
             >
               <MoreHorizontal />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            {/* Edit and Delete unmount the trigger. Base UI would then send focus
+                back through its history, out of the comments sheet and away from
+                the edit box, so only return it while the trigger is still here. */}
+            <DropdownMenuContent align="end" finalFocus={() => menuTrigger.current?.isConnected ?? false}>
               <DropdownMenuItem onClick={() => setEditing(true)}>Edit</DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onClick={() => mutations.remove.mutate(comment.id)}>
                 Delete
