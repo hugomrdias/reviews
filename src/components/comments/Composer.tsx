@@ -34,6 +34,10 @@ export function Composer({
     if (autoFocus) ref.current?.focus({ preventScroll: true })
   }, [autoFocus])
 
+  // Pressing a button would blur the textarea first. On phones that closes the keyboard,
+  // the drawer drops back down, and the tap's click lands below the button that moved.
+  const keepFocus = (e: React.MouseEvent) => e.preventDefault()
+
   const trimmed = value.trim()
   const tooLong = value.length > MAX_COMMENT_LENGTH
 
@@ -80,11 +84,17 @@ export function Composer({
           </span>
         )}
         {onCancel && (
-          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          <Button type="button" variant="ghost" size="sm" onMouseDown={keepFocus} onClick={onCancel}>
             Cancel
           </Button>
         )}
-        <Button type="button" size="sm" disabled={!trimmed || tooLong || pending} onClick={() => void submit()}>
+        <Button
+          type="button"
+          size="sm"
+          disabled={!trimmed || tooLong || pending}
+          onMouseDown={keepFocus}
+          onClick={() => void submit()}
+        >
           {submitLabel}
         </Button>
       </div>
