@@ -49,22 +49,22 @@ const threadShape = {
   ),
 }
 
+/** What to tell the agent about an error it can act on, or null for anything else, which is a bug. */
+export function agentErrorMessage(error: unknown): string | null {
+  if (error instanceof tools.ToolError) return error.message
+  if (error instanceof NotFoundError) return "That repository doesn't exist, or the person you act for can't read it in Reviews."
+  if (error instanceof AuthError) return 'GitHub rejected this connection. Disconnect the agent in Reviews and connect it again.'
+  if (error instanceof RateLimitError) return `GitHub's rate limit is used up until ${new Date(error.resetAt).toISOString()}.`
+  return null
+}
+
 /** Errors the agent can act on become tool errors; anything else is a bug and stays one. */
 async function run<T extends object>(work: () => Promise<T>, text: (result: T) => string) {
   try {
     const result = await work()
     return { content: [{ type: 'text' as const, text: text(result) }], structuredContent: result as Record<string, unknown> }
   } catch (error) {
-    const message =
-      error instanceof tools.ToolError
-        ? error.message
-        : error instanceof NotFoundError
-          ? "That repository doesn't exist, or the person you act for can't read it in Reviews."
-          : error instanceof AuthError
-            ? 'GitHub rejected this connection. Disconnect the agent in Reviews and connect it again.'
-            : error instanceof RateLimitError
-              ? `GitHub's rate limit is used up until ${new Date(error.resetAt).toISOString()}.`
-              : null
+    const message = agentErrorMessage(error)
     if (message === null) throw error
     return { content: [{ type: 'text' as const, text: message }], isError: true }
   }
@@ -157,7 +157,12 @@ export function buildServer(ctx: tools.ToolContext) {
       const text = await tools
         .listThreads(ctx, { repo, path })
         .then(tools.threadListText)
-        .catch((error) => (error instanceof Error ? `Couldn't list the threads: ${error.message}` : String(error)))
+        .catch((error) => {
+          // Same rule as the tools: only errors the agent can act on go into the prompt.
+          const message = agentErrorMessage(error)
+          if (message === null) throw error
+          return `Couldn't list the threads: ${message}`
+        })
       return {
         messages: [{ role: 'user', content: { type: 'text', text: `${instructions(ctx.appUrl)}\n\n# Open review comments\n\n${text}` } }],
       }

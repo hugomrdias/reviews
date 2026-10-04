@@ -1,9 +1,10 @@
 import { waitUntil } from 'cloudflare:workers'
 import { createFileRoute } from '@tanstack/react-router'
+import { repoInput } from '@/functions/schemas'
+import { errorCode } from '@/lib/errors'
 import { assetContentType, extname } from '@/lib/paths'
 import { loadSession } from '@/server/auth/session'
-import { requireRepoAccess } from '@/server/github/access'
-import { NotFoundError } from '@/server/github/client'
+import { checkRepoAccess } from '@/server/github/access'
 import { fetchBlob, getTree } from '@/server/github/content'
 import { FULL_SHA } from '@/server/github/refs'
 
@@ -22,18 +23,19 @@ export const Route = createFileRoute('/api/raw/$owner/$repo/$sha/$')({
   server: {
     handlers: {
       GET: async ({ params }) => {
-        const { owner, repo, sha } = params
+        const { sha } = params
         const path = params._splat ?? ''
-        if (!FULL_SHA.test(sha) || !path) return new Response('Bad request', { status: 400 })
+        const repoParams = repoInput.safeParse(params)
+        if (!repoParams.success || !FULL_SHA.test(sha) || !path) return new Response('Bad request', { status: 400 })
 
         const session = await loadSession()
         if (!session) return new Response('Sign in required', { status: 401 })
 
         let access
         try {
-          access = await requireRepoAccess(session, owner, repo)
+          access = await checkRepoAccess(session, repoParams.data.owner, repoParams.data.repo)
         } catch (error) {
-          if (error instanceof NotFoundError) return new Response('Not found', { status: 404 })
+          if (errorCode(error) === 'NO_ACCESS') return new Response('Not found', { status: 404 })
           throw error
         }
 

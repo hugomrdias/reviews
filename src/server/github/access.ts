@@ -1,3 +1,4 @@
+import { CodedError } from '@/lib/errors'
 import type { CommentPermissions } from '@/lib/threads'
 import { cached, invalidate } from '../cache'
 import type { ActiveSession } from '../auth/session'
@@ -70,6 +71,20 @@ export function requireRepoAccess(session: ActiveSession, owner: string, repo: s
       permissions: { comment: maintainer || Boolean(role?.push), moderate: maintainer },
     }
   }, ACCESS_CACHE)
+}
+
+/**
+ * requireRepoAccess for server functions and routes: a repo the user can't
+ * read throws NO_ACCESS instead of GitHub's 404, so callers needn't tell
+ * "can't see the repo" apart from any other 404 themselves.
+ */
+export async function checkRepoAccess(session: ActiveSession, owner: string, repo: string) {
+  try {
+    return await requireRepoAccess(session, owner, repo)
+  } catch (error) {
+    if (error instanceof NotFoundError) throw new CodedError('NO_ACCESS')
+    throw error
+  }
 }
 
 interface Installation {
