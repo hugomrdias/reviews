@@ -102,6 +102,12 @@ function Welcome({ signin, returnTo }: { signin?: 'failed' | 'expired' | 'cancel
             <Alert variant="destructive">
               <AlertDescription>{SIGNIN_MESSAGES[signin]}</AlertDescription>
             </Alert>
+          ) : returnTo ? (
+            <Alert>
+              <AlertDescription>
+                Sign in to open <span className="font-medium break-all text-foreground">{returnTo.slice(1)}</span>.
+              </AlertDescription>
+            </Alert>
           ) : null}
           <div className="flex flex-col items-start gap-3">
             <a href={loginHref} className={cn(buttonVariants({ size: 'lg' }))}>

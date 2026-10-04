@@ -1,0 +1,91 @@
+<!doctype html>
+<!-- The link-preview card. scripts/icons.sh screenshots it to public/og-image.png at 1200x630. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600&family=Literata:opsz,wght@7..72,600&display=block"
+    />
+    <style>
+      * {
+        margin: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 72px 80px;
+        background: #f6f7f9;
+        color: #1b2230;
+        font-family: 'Atkinson Hyperlegible Next', sans-serif;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 30px;
+        font-weight: 600;
+      }
+      .brand span {
+        width: 34px;
+        height: 20px;
+        border-radius: 3px;
+        background: #ffd43b;
+      }
+      .page {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 300px;
+        gap: 48px;
+        align-items: start;
+      }
+      h1 {
+        font-family: 'Literata', serif;
+        font-size: 76px;
+        font-weight: 600;
+        line-height: 1.12;
+        letter-spacing: -0.01em;
+      }
+      mark {
+        border-radius: 4px;
+        padding: 0 6px;
+        background: #ffd43b;
+        color: inherit;
+        white-space: nowrap;
+      }
+      .note {
+        margin-top: 92px;
+        border-left: 5px solid #ffd43b;
+        padding: 18px 20px;
+        background: #fff;
+        box-shadow: 0 16px 40px -20px rgb(27 34 48 / 0.35);
+        font-size: 24px;
+        line-height: 1.35;
+      }
+      .note b {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 20px;
+      }
+      p {
+        color: #5b6474;
+        font-size: 28px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="brand"><span></span>Reviews</div>
+    <div class="page">
+      <h1>Comment on <mark>the docs</mark> in your GitHub repos</h1>
+      <div class="note"><b>maya</b>Could this section link to the runbook?</div>
+    </div>
+    <p>Select any passage and leave a note for your team.</p>
+  </body>
+</html>

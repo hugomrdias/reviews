@@ -128,7 +128,7 @@ All Previews share one database, so a pull request's migrations reach it before 
 | `pnpm db:generate` | New migration from `src/server/db/schema.ts` |
 | `pnpm db:migrate:local` / `db:migrate:remote` | Apply migrations |
 | `pnpm cf-typegen` | Regenerate binding types after changing `wrangler.jsonc` |
-| `scripts/icons.sh` | Regenerate the favicon and app icons from `public/logo.svg` (needs ImageMagick 7) |
+| `scripts/icons.sh` | Regenerate the favicon and app icons from `public/logo.svg`, and the link-preview card from `scripts/og-image.html` (needs ImageMagick 7 and Chrome) |
 
 ## How it fits together
 
