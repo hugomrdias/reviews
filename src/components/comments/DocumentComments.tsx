@@ -6,7 +6,7 @@ import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
 import type { ThreadMutations } from '@/hooks/useThreadMutations'
 import { useTextHighlights } from '@/hooks/useTextHighlights'
 import { selectionLines, textAnchor } from '@/lib/anchoring/draft'
-import { buildTextIndex, offsetsToRange, rangeToOffsets, type TextIndex } from '@/lib/anchoring/text-index'
+import { buildTextIndex, nodeStart, offsetsToRange, rangeToOffsets, type TextIndex } from '@/lib/anchoring/text-index'
 import type { AnchorData } from '@/lib/threads'
 import type { SessionUser } from '@/server/auth/session'
 import { Composer } from './Composer'
@@ -58,8 +58,8 @@ function caretOffset(index: TextIndex, x: number, y: number) {
       offset = range.startOffset
     }
   }
-  const entry = node && index.nodes.find((n) => n.node === node)
-  return entry ? entry.start + offset : null
+  const start = node ? nodeStart(index, node) : null
+  return start === null ? null : start + offset
 }
 
 interface DocumentCommentsProps {

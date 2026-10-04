@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:workers'
-import { deleteCookie, getCookie, setCookie } from '@tanstack/react-start/server'
+import { deleteCookie, getCookie, getRequest, setCookie } from '@tanstack/react-start/server'
 import { eq, lt } from 'drizzle-orm'
 import { getDb } from '../db/client'
 import { sessions, users, type User } from '../db/schema'
@@ -46,6 +46,10 @@ function tokenKey() {
   return deriveKey(env.SESSION_SECRET, 'session-tokens')
 }
 
+// Sessions already loaded for a request. A server render calls several server
+// functions, and each one asks for the session.
+const loaded = new WeakMap<Request, Promise<ActiveSession | null>>()
+
 export async function createSession(user: SessionUser, tokens: TokenSet) {
   const db = getDb()
   const now = Date.now()
@@ -81,6 +85,7 @@ export async function destroySession() {
 
 export async function deleteSessionById(id: string) {
   await getDb().delete(sessions).where(eq(sessions.id, id))
+  loaded.delete(getRequest())
 }
 
 async function readSession(id: string) {
@@ -143,8 +148,18 @@ async function freshAccessToken(row: typeof sessions.$inferSelect): Promise<stri
   return pending
 }
 
-/** Loads the signed-in user's session, or null. Clears dead sessions. */
-export async function loadSession(): Promise<ActiveSession | null> {
+/** Loads the signed-in user's session, or null. Clears dead sessions. Reads D1 once per request. */
+export function loadSession(): Promise<ActiveSession | null> {
+  const request = getRequest()
+  let session = loaded.get(request)
+  if (!session) {
+    session = readActiveSession()
+    loaded.set(request, session)
+  }
+  return session
+}
+
+async function readActiveSession(): Promise<ActiveSession | null> {
   const token = getCookie(sessionCookieName())
   if (!token) return null
   const id = await sha256Hex(token)

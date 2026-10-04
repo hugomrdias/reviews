@@ -15,26 +15,25 @@ const resolver = alias(users, 'resolver')
 
 /** Every thread on a file, open and resolved, with its comments. */
 export async function listThreads(db: Db, repoId: number, path: string): Promise<ThreadView[]> {
-  const rows = await db
-    .select({ thread: threads, author: users, resolver })
-    .from(threads)
-    .innerJoin(users, eq(users.id, threads.authorId))
-    .leftJoin(resolver, eq(resolver.id, threads.resolvedBy))
-    .where(and(eq(threads.repoId, repoId), eq(threads.path, path)))
-    .orderBy(asc(threads.createdAt))
+  const onFile = and(eq(threads.repoId, repoId), eq(threads.path, path))
+  // Both queries at once; the comments find their threads with a subquery.
+  // Not db.batch: it maps joined rows by column name, and both tables have an `id`.
+  const [rows, commentRows] = await Promise.all([
+    db
+      .select({ thread: threads, author: users, resolver })
+      .from(threads)
+      .innerJoin(users, eq(users.id, threads.authorId))
+      .leftJoin(resolver, eq(resolver.id, threads.resolvedBy))
+      .where(onFile)
+      .orderBy(asc(threads.createdAt)),
+    db
+      .select({ comment: comments, author: users })
+      .from(comments)
+      .innerJoin(users, eq(users.id, comments.authorId))
+      .where(inArray(comments.threadId, db.select({ id: threads.id }).from(threads).where(onFile)))
+      .orderBy(asc(comments.createdAt)),
+  ])
   if (rows.length === 0) return []
-
-  const commentRows = await db
-    .select({ comment: comments, author: users })
-    .from(comments)
-    .innerJoin(users, eq(users.id, comments.authorId))
-    .where(
-      inArray(
-        comments.threadId,
-        rows.map((r) => r.thread.id),
-      ),
-    )
-    .orderBy(asc(comments.createdAt))
 
   const byThread = new Map<string, ThreadView['comments']>()
   for (const { comment, author } of commentRows) {
@@ -86,8 +85,11 @@ export async function openThreadCounts(db: Db, repoId: number) {
   return Object.fromEntries(rows.map((r) => [r.path, r.n])) as Record<string, number>
 }
 
-/** Open threads and last activity per repo, for repos that have any threads. */
-export async function repoActivity(db: Db) {
+/** Open threads and last activity per repo, for the given repos that have any threads. */
+export async function repoActivity(db: Db, repoIds: number[]) {
+  if (repoIds.length === 0) return new Map<number, { open: number; lastActivity: number }>()
+  // The ids go in as one JSON parameter: D1 allows only 100 bound parameters.
+  const ids = sql`(select value from json_each(${JSON.stringify(repoIds)}))`
   const rows = await db
     .select({
       repoId: threads.repoId,
@@ -95,6 +97,7 @@ export async function repoActivity(db: Db) {
       lastActivity: sql<number>`max(${threads.updatedAt})`,
     })
     .from(threads)
+    .where(inArray(threads.repoId, ids))
     .groupBy(threads.repoId)
   return new Map(rows.map((r) => [r.repoId, { open: Number(r.open), lastActivity: Number(r.lastActivity) }]))
 }

@@ -37,19 +37,40 @@ interface MatchingRef {
   object: { sha: string; type: 'commit' | 'tag' }
 }
 
-async function commitShaFor(token: string, base: string, ref: string) {
-  const res = await githubFetch(token, `${base}/commits/${encodeURIComponent(ref)}`, {
-    accept: 'application/vnd.github.sha',
-  })
-  return (await res.text()).trim()
+// Branches and tags move, so lookups are fresh for a minute, then served for
+// up to five more while they refresh: right after a push, a branch can show
+// its previous commit for one more request. They're cached by ref, not by
+// file, so opening another file on the same branch doesn't ask GitHub again.
+const REF_TTL = 60
+const REF_CACHE = { staleSeconds: 5 * 60 }
+
+function commitShaFor(token: string, base: string, ref: string) {
+  return cached(
+    `commit-sha:${base}:${ref}`,
+    REF_TTL,
+    async () => {
+      const res = await githubFetch(token, `${base}/commits/${encodeURIComponent(ref)}`, {
+        accept: 'application/vnd.github.sha',
+      })
+      return (await res.text()).trim()
+    },
+    REF_CACHE,
+  )
 }
 
-async function matchRefs(token: string, base: string, kind: 'heads' | 'tags', prefix: string) {
-  const refs = await githubJson<MatchingRef[]>(
-    token,
-    `${base}/git/matching-refs/${kind}/${encodeURIComponent(prefix)}`,
+function matchRefs(token: string, base: string, kind: 'heads' | 'tags', prefix: string) {
+  return cached(
+    `matching-refs:${base}:${kind}:${prefix}`,
+    REF_TTL,
+    async () => {
+      const refs = await githubJson<MatchingRef[]>(
+        token,
+        `${base}/git/matching-refs/${kind}/${encodeURIComponent(prefix)}`,
+      )
+      return refs.map((r) => ({ name: r.ref.slice(`refs/${kind}/`.length), object: r.object }))
+    },
+    REF_CACHE,
   )
-  return refs.map((r) => ({ ...r, name: r.ref.slice(`refs/${kind}/`.length) }))
 }
 
 /**
@@ -66,37 +87,34 @@ export async function resolveLocation(
 ): Promise<Location> {
   const clean = splat.replace(/^\/+|\/+$/g, '')
   const base = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`
-  const key = `loc:${owner}/${repo}:${clean || defaultBranch}`
 
-  return cached(key, 60, async () => {
-    if (!clean) {
-      return { ref: defaultBranch, sha: await commitShaFor(token, base, defaultBranch), path: '' }
-    }
-    const first = clean.split('/')[0]
-    if (FULL_SHA.test(first)) return { ref: first, sha: first, path: splitRefPath(clean, first) }
+  if (!clean) {
+    return { ref: defaultBranch, sha: await commitShaFor(token, base, defaultBranch), path: '' }
+  }
+  const first = clean.split('/')[0]
+  if (FULL_SHA.test(first)) return { ref: first, sha: first, path: splitRefPath(clean, first) }
 
-    for (const kind of ['heads', 'tags'] as const) {
-      const refs = await matchRefs(token, base, kind, first)
-      const name = pickLongestRef(
-        clean,
-        refs.map((r) => r.name),
-      )
-      if (!name) continue
-      const match = refs.find((r) => r.name === name)!
-      // Annotated tags point at a tag object, not a commit.
-      const sha =
-        match.object.type === 'commit' ? match.object.sha : await commitShaFor(token, base, name)
-      return { ref: name, sha, path: splitRefPath(clean, name) }
-    }
+  for (const kind of ['heads', 'tags'] as const) {
+    const refs = await matchRefs(token, base, kind, first)
+    const name = pickLongestRef(
+      clean,
+      refs.map((r) => r.name),
+    )
+    if (!name) continue
+    const match = refs.find((r) => r.name === name)!
+    // Annotated tags point at a tag object, not a commit.
+    const sha =
+      match.object.type === 'commit' ? match.object.sha : await commitShaFor(token, base, name)
+    return { ref: name, sha, path: splitRefPath(clean, name) }
+  }
 
-    try {
-      return { ref: first, sha: await commitShaFor(token, base, first), path: splitRefPath(clean, first) }
-    } catch (error) {
-      // The commits API answers 422 when the ref doesn't resolve to a commit.
-      if (error instanceof NotFoundError || (error instanceof GitHubError && error.status === 422)) {
-        throw new NotFoundError(`Unknown ref: ${first}`, 404)
-      }
-      throw error
+  try {
+    return { ref: first, sha: await commitShaFor(token, base, first), path: splitRefPath(clean, first) }
+  } catch (error) {
+    // The commits API answers 422 when the ref doesn't resolve to a commit.
+    if (error instanceof NotFoundError || (error instanceof GitHubError && error.status === 422)) {
+      throw new NotFoundError(`Unknown ref: ${first}`, 404)
     }
-  })
+    throw error
+  }
 }

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod/mini'
 import { RepoLauncher } from '@/components/home/RepoLauncher'
 import { UserMenu } from '@/components/shell/UserMenu'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -12,14 +12,19 @@ import type { SessionUser } from '@/server/auth/session'
 
 export const Route = createFileRoute('/')({
   validateSearch: z.object({
-    signin: z.enum(['failed', 'expired', 'cancelled']).optional(),
+    signin: z.optional(z.enum(['failed', 'expired', 'cancelled'])),
     // Where to go after signing in. Same-site paths only; /auth/login checks again.
-    returnTo: z
-      .string()
-      .max(2048)
-      .refine((v) => v.startsWith('/') && !v.startsWith('//') && !v.startsWith('/\\'))
-      .optional()
-      .catch(undefined),
+    returnTo: z.catch(
+      z.optional(
+        z
+          .string()
+          .check(
+            z.maxLength(2048),
+            z.refine((v) => v.startsWith('/') && !v.startsWith('//') && !v.startsWith('/\\')),
+          ),
+      ),
+      undefined,
+    ),
   }),
   loader: ({ context }) => {
     if (context.viewer) void context.queryClient.prefetchQuery(reposQuery())

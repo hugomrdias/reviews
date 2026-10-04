@@ -1,5 +1,4 @@
-import { ClientOnly } from '@tanstack/react-router'
-import { File, type LineAnnotation } from '@pierre/diffs/react'
+import type { LineAnnotation } from '@pierre/diffs/react'
 import { useMemo, useRef } from 'react'
 import { Composer } from '@/components/comments/Composer'
 import { ThreadCard, type ThreadLocation } from '@/components/comments/ThreadCard'
@@ -10,6 +9,7 @@ import { isMarkdown } from '@/lib/paths'
 import type { AnchorData } from '@/lib/threads'
 import type { SessionUser } from '@/server/auth/session'
 import { PlainCode } from './CodeBlock'
+import { DiffsOnly, File } from './diffs'
 import { useDiffsTheme } from './diffs-options'
 
 type Note = { kind: 'thread'; anchored: AnchoredThread } | { kind: 'draft' }
@@ -92,7 +92,7 @@ export function SourceView({
 
   return (
     <div className="overflow-hidden rounded-lg border bg-card" data-anchor-skip>
-      <ClientOnly fallback={<PlainCode code={source} />}>
+      <DiffsOnly fallback={<PlainCode code={source} />}>
         <File<Note>
           file={file}
           options={options}
@@ -126,7 +126,7 @@ export function SourceView({
             </div>
           )}
         />
-      </ClientOnly>
+      </DiffsOnly>
     </div>
   )
 }

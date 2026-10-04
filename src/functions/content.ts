@@ -136,17 +136,18 @@ export const fetchRepos = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async ({ context: { session } }): Promise<RepoListItem[]> => {
     const installations = await listInstallations(session)
-    const [lists, activity] = await Promise.all([
-      Promise.all(
-        installations.map(async (installation) => {
-          const repositories = await listInstallationRepos(session, installation.id)
-          return repositories.map((r) => ({ account: installation.login, repo: r }))
-        }),
-      ),
-      repoActivity(getDb()),
-    ])
-    return lists
-      .flat()
+    const lists = await Promise.all(
+      installations.map(async (installation) => {
+        const repositories = await listInstallationRepos(session, installation.id)
+        return repositories.map((r) => ({ account: installation.login, repo: r }))
+      }),
+    )
+    const repos = lists.flat()
+    const activity = await repoActivity(
+      getDb(),
+      repos.map(({ repo: r }) => r.id),
+    )
+    return repos
       .map(({ account, repo: r }) => ({
         account,
         owner: r.owner.login,

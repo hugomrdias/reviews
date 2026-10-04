@@ -68,13 +68,15 @@ export function getFileContent(
   if (isImage(entry.path)) return Promise.resolve<FileContent>({ kind: 'image', ...meta })
   if (entry.size > MAX_TEXT_BYTES) return Promise.resolve<FileContent>({ kind: 'too-large', ...meta })
 
-  return cached<FileContent>(`blob:${repoId}:${entry.sha}:${entry.path}`, IMMUTABLE_TTL, async () => {
+  // Keyed by blob alone; the path is added back, since the same blob can sit at many paths.
+  type BlobContent = { kind: 'binary' | 'lfs' } | { kind: 'text'; text: string }
+  return cached<BlobContent>(`blob-content:${repoId}:${entry.sha}`, IMMUTABLE_TTL, async () => {
     const bytes = new Uint8Array(await (await fetchBlob(token, owner, repo, entry.sha)).arrayBuffer())
-    if (looksBinary(bytes)) return { kind: 'binary', ...meta }
+    if (looksBinary(bytes)) return { kind: 'binary' }
     const text = new TextDecoder().decode(bytes)
-    if (text.startsWith('version https://git-lfs.github.com/spec/v1')) return { kind: 'lfs', ...meta }
-    return { kind: 'text', ...meta, text }
-  })
+    if (text.startsWith('version https://git-lfs.github.com/spec/v1')) return { kind: 'lfs' }
+    return { kind: 'text', text }
+  }).then((content): FileContent => ({ ...content, ...meta }))
 }
 
 export function fetchBlob(token: string, owner: string, repo: string, blobSha: string) {

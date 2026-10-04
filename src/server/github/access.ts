@@ -34,14 +34,27 @@ interface RepoResponse {
  * also have to be in one of the user's installations. Private repos already
  * 404 when the app isn't installed on them.
  */
+/**
+ * Access checks are fresh for a minute, then served for up to five more while
+ * they refresh in the background, so an expired check doesn't put GitHub's
+ * latency in front of the page. Revoked access can last that long; a refresh
+ * that fails drops the entry.
+ */
+const ACCESS_CACHE = { staleSeconds: 5 * 60 }
+
 export function requireRepoAccess(session: ActiveSession, owner: string, repo: string) {
   const key = `repo-access:${session.user.id}:${owner.toLowerCase()}/${repo.toLowerCase()}`
   return cached<RepoAccess>(key, 60, async () => {
+    // Fetched alongside the repo rather than after it, which saves a GitHub
+    // round trip for public repos. Private repos don't need it, and it's
+    // cached per user, so the extra call is cheap.
+    const installations = listInstallations(session)
+    installations.catch(() => {})
     const data = await githubJson<RepoResponse>(
       session.accessToken,
       `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
     )
-    if (!data.private && !(await isInstalled(session, data.owner.id, data.id))) {
+    if (!data.private && !(await isInstalled(session, await installations, data.owner.id, data.id))) {
       throw new NotFoundError(`Not installed: ${data.full_name}`, 404)
     }
     const role = data.permissions
@@ -56,7 +69,7 @@ export function requireRepoAccess(session: ActiveSession, owner: string, repo: s
       ownerId: data.owner.id,
       permissions: { comment: maintainer || Boolean(role?.push), moderate: maintainer },
     }
-  })
+  }, ACCESS_CACHE)
 }
 
 interface Installation {
@@ -67,7 +80,7 @@ interface Installation {
 
 const installationsKey = (userId: number) => `installations:${userId}`
 const installationReposKey = (userId: number, installationId: number) =>
-  `installation-repos:${userId}:${installationId}`
+  `installation-repo-list:${userId}:${installationId}`
 
 /** Call after the user installs or changes the app on GitHub. */
 export async function forgetInstallations(session: ActiveSession) {
@@ -94,7 +107,7 @@ export function listInstallations(session: ActiveSession) {
       type: i.account.type,
       selection: i.repository_selection,
     }))
-  })
+  }, ACCESS_CACHE)
 }
 
 export interface InstallationRepo {
@@ -108,32 +121,42 @@ export interface InstallationRepo {
   pushed_at: string | null
 }
 
+interface InstallationReposPage {
+  total_count: number
+  repositories: InstallationRepo[]
+}
+
 /** Repos in an installation that the user can read. */
-export async function listInstallationRepos(session: ActiveSession, installationId: number) {
-  // 100 per page; stop at 1,000 so a huge org can't stall the page.
-  const repositories: InstallationRepo[] = []
-  for (let page = 1; page <= 10; page++) {
-    const data = await githubJson<{ total_count: number; repositories: InstallationRepo[] }>(
-      session.accessToken,
-      `/user/installations/${installationId}/repositories?per_page=100&page=${page}`,
-    )
-    repositories.push(...data.repositories)
-    if (data.repositories.length < 100 || repositories.length >= data.total_count) break
-  }
-  return repositories
+export function listInstallationRepos(session: ActiveSession, installationId: number) {
+  return cached(installationReposKey(session.user.id, installationId), 60, async () => {
+    const page = (n: number) =>
+      githubJson<InstallationReposPage>(
+        session.accessToken,
+        `/user/installations/${installationId}/repositories?per_page=100&page=${n}`,
+      )
+    // 100 per page. The first page gives the total, so the rest load in
+    // parallel. Stop at 1,000 so a huge org can't stall the page.
+    const first = await page(1)
+    const pages = Math.min(10, Math.ceil(first.total_count / 100))
+    const rest = await Promise.all(Array.from({ length: Math.max(0, pages - 1) }, (_, i) => page(i + 2)))
+    return [first, ...rest].flatMap((p) => p.repositories)
+  }, ACCESS_CACHE)
 }
 
 /** Whether the app is installed on the repo, in an installation the user can see. */
-async function isInstalled(session: ActiveSession, ownerId: number, repoId: number) {
-  const installation = (await listInstallations(session)).find((i) => i.accountId === ownerId)
+async function isInstalled(
+  session: ActiveSession,
+  installations: Awaited<ReturnType<typeof listInstallations>>,
+  ownerId: number,
+  repoId: number,
+) {
+  const installation = installations.find((i) => i.accountId === ownerId)
   if (!installation) return false
   // Deliberate: anyone who can see an all-repos installation can open every
   // public repo of that owner, which saves listing a large org's repos.
   if (installation.selection === 'all') return true
-  const ids = await cached(installationReposKey(session.user.id, installation.id), 60, async () =>
-    (await listInstallationRepos(session, installation.id)).map((r) => r.id),
-  )
-  return ids.includes(repoId)
+  const repos = await listInstallationRepos(session, installation.id)
+  return repos.some((r) => r.id === repoId)
 }
 
 export type NoAccess =

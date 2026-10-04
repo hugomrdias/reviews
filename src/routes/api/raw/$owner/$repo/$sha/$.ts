@@ -1,3 +1,4 @@
+import { waitUntil } from 'cloudflare:workers'
 import { createFileRoute } from '@tanstack/react-router'
 import { assetContentType, extname } from '@/lib/paths'
 import { loadSession } from '@/server/auth/session'
@@ -43,13 +44,18 @@ export const Route = createFileRoute('/api/raw/$owner/$repo/$sha/$')({
         // The edge cache is shared, so the key is the content; access was checked above.
         const cacheKey = new Request(`https://raw-cache.internal/${access.repoId}/${entry.sha}/${extname(path)}`)
         const cache = edgeCache()
-        let body: ArrayBuffer | null = null
-        const hit = await cache?.match(cacheKey)
-        if (hit) {
-          body = await hit.arrayBuffer()
-        } else {
-          body = await (await fetchBlob(session.accessToken, access.owner, access.name, entry.sha)).arrayBuffer()
-          await cache?.put(cacheKey, new Response(body, { headers: { 'Cache-Control': 'max-age=31536000' } }))
+        let body = (await cache?.match(cacheKey))?.body ?? null
+        if (!body) {
+          // Streamed, not buffered: one copy goes to the viewer, the other to the cache.
+          const blob = (await fetchBlob(session.accessToken, access.owner, access.name, entry.sha)).body
+          if (blob && cache) {
+            const [forViewer, forCache] = blob.tee()
+            body = forViewer
+            const stored = new Response(forCache, { headers: { 'Cache-Control': 'max-age=31536000' } })
+            waitUntil(cache.put(cacheKey, stored).catch(() => {}))
+          } else {
+            body = blob
+          }
         }
 
         const type = assetContentType(path)

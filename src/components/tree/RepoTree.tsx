@@ -1,7 +1,7 @@
 import { FileTree, useFileTree, type FileTreePreloadedData } from '@pierre/trees/react'
-import { prepareFileTreeInput, type FileTreeDirectoryHandle } from '@pierre/trees'
+import { prepareFileTreeInput, type FileTreeDirectoryHandle, type FileTreeOptions } from '@pierre/trees'
 import { useNavigate } from '@tanstack/react-router'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toSplat } from '@/lib/links'
 import { ancestors } from '@/lib/paths'
 import { useTheme } from '@/lib/theme'
@@ -54,7 +54,9 @@ export function RepoTree({ owner, repo, ref, sha, paths, path, counts, preloaded
   // Set while the route drives the selection, so it doesn't navigate back.
   const syncing = useRef(false)
 
-  const { model } = useFileTree({
+  // useFileTree reads its options only when it creates the tree, and preparing
+  // the paths walks every file in the repo, so build them once, not per render.
+  const [options] = useState((): FileTreeOptions => ({
     ...treeOptions(paths, path),
     onSelectionChange: (selected) => {
       if (syncing.current) return
@@ -72,7 +74,8 @@ export function RepoTree({ owner, repo, ref, sha, paths, path, counts, preloaded
       const n = countsRef.current[item.path]
       return n ? { text: String(n), title: n === 1 ? '1 open comment' : `${n} open comments` } : null
     },
-  })
+  }))
+  const { model } = useFileTree(options)
 
   // A different commit: swap the paths, keep the tree.
   const shownSha = useRef(sha)
