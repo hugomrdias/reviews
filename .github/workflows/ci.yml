@@ -72,18 +72,12 @@ jobs:
       - id: preview
         name: Create or update the Preview
         run: |
-          set -o pipefail
           app_url="https://${PREVIEW_NAME}-github-reviews.${WORKERS_SUBDOMAIN}.workers.dev"
-          output="$(pnpm exec wrangler preview --name "$PREVIEW_NAME" --var "APP_URL:$app_url" --json)"
-          printf '%s\n' "$output"
-          url="$(printf '%s' "$output" | jq -r '.preview.urls[0] // empty')"
-          if [ -z "$url" ]; then
-            echo "::error::Cloudflare returned no Preview URL. Check that preview URLs are enabled for the github-reviews Worker (preview_urls in wrangler.jsonc, applied by wrangler deploy)."
-            exit 1
-          fi
-          # APP_URL drives the OAuth callback, so it has to be the URL Cloudflare actually serves.
-          if [ "${url%/}" != "$app_url" ]; then
-            echo "::error::Preview is at $url, but APP_URL was set to $app_url. Check WORKERS_SUBDOMAIN."
+          pnpm exec wrangler preview --name "$PREVIEW_NAME" --var "APP_URL:$app_url"
+          # APP_URL drives the OAuth callback, so it has to be a URL Cloudflare actually serves.
+          # Wrangler's output doesn't include the Preview URL, so ask the URL itself.
+          if ! curl -fsS -o /dev/null --retry 5 --retry-all-errors --retry-delay 3 "$app_url/"; then
+            echo "::error::$app_url doesn't respond. Check WORKERS_SUBDOMAIN, and that preview URLs are enabled for the github-reviews Worker."
             exit 1
           fi
           echo "url=$app_url" >> "$GITHUB_OUTPUT"
