@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decrypt, deriveKey, encrypt, safeEqual } from './crypto'
+import { base64UrlDecode, base64UrlEncode, decrypt, deriveKey, encrypt, safeEqual } from './crypto'
 
 const secret = 'test-secret-that-is-long-enough-1234567890'
 
@@ -14,8 +14,9 @@ describe('encrypt / decrypt', () => {
   it('rejects tampered values', async () => {
     const key = await deriveKey(secret, 'session-tokens')
     const sealed = await encrypt(key, 'ghu_token')
-    const flipped = sealed.slice(0, -2) + (sealed.endsWith('A') ? 'B' : 'A') + sealed.slice(-1)
-    expect(await decrypt(key, flipped)).toBeNull()
+    const bytes = base64UrlDecode(sealed)
+    bytes[bytes.length - 1] ^= 1
+    expect(await decrypt(key, base64UrlEncode(bytes))).toBeNull()
   })
 
   it('keeps purposes apart', async () => {
