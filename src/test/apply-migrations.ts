@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 import { applyD1Migrations, env, type D1Migration } from 'cloudflare:test'
 
 // Workers tests get their own D1; bring it to the current schema.

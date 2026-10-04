@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-pool-workers'
+import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-plugin'
 import { defineConfig } from 'vitest/config'
 
 const WORKERS_TESTS = 'src/**/*.workers.test.{ts,tsx}'
@@ -25,8 +25,8 @@ export default defineConfig(async () => {
           plugins: [
             cloudflareTest({
               miniflare: {
-                // The newest date this pool's workerd supports; wrangler.jsonc's is later.
-                compatibilityDate: '2026-08-22',
+                // Keep in sync with wrangler.jsonc.
+                compatibilityDate: '2026-09-28',
                 compatibilityFlags: ['nodejs_compat'],
                 d1Databases: ['DB'],
                 kvNamespaces: ['OAUTH_KV'],

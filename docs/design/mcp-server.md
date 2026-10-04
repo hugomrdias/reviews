@@ -199,7 +199,7 @@ Three pull requests, each one usable on its own:
    claude mcp add --transport http reviews https://reviews.hugodias.me/mcp
    ```
 
-Testing for 3: unit tests for each tool's handler against a test database, which `@cloudflare/vitest-pool-workers` (already a dev dependency) makes possible. Then the MCP Inspector against `pnpm dev`, and Claude Code end to end against the Preview.
+Testing for 3: unit tests for each tool's handler against a test database, which `@cloudflare/vitest-plugin` (already a dev dependency) makes possible. Then the MCP Inspector against `pnpm dev`, and Claude Code end to end against the Preview.
 
 ## Decisions
 
