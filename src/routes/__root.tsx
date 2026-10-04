@@ -38,6 +38,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { title: 'Reviews' },
         { name: 'description', content: DESCRIPTION },
+        { name: 'author', content: 'Hugo Dias' },
         { property: 'og:site_name', content: 'Reviews' },
         { property: 'og:type', content: 'website' },
         { property: 'og:title', content: 'Reviews' },

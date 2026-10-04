@@ -1,6 +1,7 @@
 {
   "name": "github-reviews",
   "private": true,
+  "author": "Hugo Dias <hugomrdias@gmail.com> (https://hugodias.me)",
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 3000",
