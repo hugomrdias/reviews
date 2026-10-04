@@ -112,8 +112,15 @@ function MdPre({ node, children }: ComponentProps<'pre'> & { node?: Element }) {
     .find((c) => c.startsWith('language-'))
     ?.slice('language-'.length)
   const source = textOf(code).replace(/\n$/, '')
-  if (lang?.toLowerCase() === 'mermaid') return <MermaidDiagram source={source} />
-  return <CodeBlock code={source} lang={lang} />
+  // Keep the pre's source lines so line comments on a fence find their block.
+  return (
+    <div
+      data-sline={node?.properties.dataSline as number | undefined}
+      data-eline={node?.properties.dataEline as number | undefined}
+    >
+      {lang?.toLowerCase() === 'mermaid' ? <MermaidDiagram source={source} /> : <CodeBlock code={source} lang={lang} />}
+    </div>
+  )
 }
 
 const ALERTS: Record<AlertType, { icon: ReactNode; tone: string }> = {
