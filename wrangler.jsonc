@@ -4,7 +4,14 @@
   "main": "@tanstack/react-start/server-entry",
   "compatibility_date": "2026-09-28",
   "compatibility_flags": ["nodejs_compat"],
-  "observability": { "enabled": true },
+  "observability": {
+    "enabled": true,
+    // Keeps the OAuth code and state from /auth/callback out of logs and traces.
+    "redact_query_string": true,
+    "logs": { "enabled": true, "invocation_logs": true },
+    // `enabled` above only turns on logs; tracing needs its own flag.
+    "traces": { "enabled": true }
+  },
   "upload_source_maps": true,
   // Top-level settings are production. Local dev overrides the vars from .dev.vars.
   "vars": {
