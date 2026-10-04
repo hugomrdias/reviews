@@ -10,7 +10,7 @@ function StateBlock({ icon, title, children }: { icon: ReactNode; title: string;
     <div className="mx-auto flex max-w-md flex-col items-start gap-3 py-16">
       <div className="text-muted-foreground [&_svg]:size-6">{icon}</div>
       <h1 className="text-xl font-semibold text-balance">{title}</h1>
-      <div className="space-y-3 text-[0.9375rem] leading-relaxed text-muted-foreground">{children}</div>
+      <div className="flex flex-col items-start gap-3 text-[0.9375rem] leading-relaxed text-muted-foreground">{children}</div>
     </div>
   )
 }

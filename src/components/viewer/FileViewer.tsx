@@ -53,7 +53,7 @@ const NO_THREADS: ThreadView[] = []
 
 export function ViewerPending() {
   return (
-    <div className="mx-auto max-w-3xl space-y-4 px-6 py-12">
+    <div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-12">
       <Skeleton className="h-9 w-2/3" />
       <Skeleton className="h-4 w-full" />
       <Skeleton className="h-4 w-11/12" />
@@ -264,7 +264,7 @@ function RepoViewer({ viewer, owner, repo, repoSummary, refName, sha, path, sear
   if (entry.kind === 'missing') body = <FileMissing path={path} refName={refName} />
   else if (entry.kind === 'image') {
     body = (
-      <figure className="space-y-2">
+      <figure className="flex flex-col items-start gap-2">
         <img src={rawUrl(ctx, path)} alt={path} className="max-h-[75dvh] max-w-full rounded-md border bg-card" />
       </figure>
     )

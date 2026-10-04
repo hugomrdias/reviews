@@ -77,7 +77,7 @@ function Welcome({ signin, returnTo }: { signin?: 'failed' | 'expired' | 'cancel
       </p>
 
       <div className="grid flex-1 items-center gap-14 py-14 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-24">
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
           <h1 className="font-serif text-4xl leading-[1.1] font-semibold tracking-tight text-balance md:text-5xl">
             Comment on the docs in your repos
           </h1>
@@ -102,7 +102,7 @@ function Welcome({ signin, returnTo }: { signin?: 'failed' | 'expired' | 'cancel
               <AlertDescription>{SIGNIN_MESSAGES[signin]}</AlertDescription>
             </Alert>
           ) : null}
-          <div className="space-y-3">
+          <div className="flex flex-col items-start gap-3">
             <Button asChild size="lg">
               <a href={loginHref}>
                 <GitHubMark /> {signin === 'cancelled' ? 'Try again' : 'Sign in with GitHub'}
@@ -141,7 +141,7 @@ function Repositories({ viewer }: { viewer: SessionUser }) {
         </div>
 
         {isLoading ? (
-          <div className="space-y-2 rounded-xl border bg-card p-4">
+          <div className="flex flex-col gap-2 rounded-xl border bg-card p-4">
             <Skeleton className="h-10 w-full" />
             {[0, 1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-11 w-full" />
@@ -150,7 +150,7 @@ function Repositories({ viewer }: { viewer: SessionUser }) {
         ) : isError ? (
           <p className="text-muted-foreground">Your repositories didn't load. Refresh the page to try again.</p>
         ) : (
-          <div className="space-y-6">
+          <div className="flex flex-col gap-6">
             <RepoLauncher repos={repos ?? []} viewerLogin={viewer.login} />
             {repos?.length === 0 && (
               <div className="rounded-xl border border-dashed p-6">

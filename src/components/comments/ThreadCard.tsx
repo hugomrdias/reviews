@@ -53,7 +53,7 @@ function Comment({
 }) {
   const [editing, setEditing] = useState(false)
   return (
-    <div className="group/comment space-y-1">
+    <div className="group/comment flex flex-col gap-1">
       <div className="flex items-center gap-2 text-xs">
         <AuthorAvatar author={comment.author} />
         <span className="font-semibold text-foreground">{comment.author.login}</span>
@@ -188,7 +188,7 @@ export function ThreadCard({
         </p>
       )}
 
-      <div className="space-y-3">
+      <div className="flex flex-col gap-3">
         {visible.map((comment) => (
           <Comment key={comment.id} comment={comment} own={viewer?.id === comment.author.id} mutations={mutations} />
         ))}
@@ -201,7 +201,7 @@ export function ThreadCard({
       )}
 
       {active && (
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 flex flex-col gap-2">
           {!resolved && (
             <Composer
               placeholder="Reply"

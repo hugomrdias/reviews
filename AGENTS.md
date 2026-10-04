@@ -9,3 +9,9 @@ Before editing files for a substantial task:
 - Monorepos: when working across packages, run the skill check from the workspace root and prefer the local skill for the package being changed.
 - Multiple matches: prefer the most specific local skill for the package or concern you are changing; load additional skills only when the task spans multiple packages or concerns.
 <!-- intent-skills:end -->
+
+## Project conventions
+
+- **UI:** shadcn/ui (Radix base, Nova style). Follow the `shadcn` skill in `.agents/skills/`, with one deliberate exception: the GitHub alert callouts in `src/components/markdown/MarkdownView.tsx` use raw Tailwind palette colors (sky, emerald, violet, amber, red) on purpose. They mirror GitHub's Note, Tip, Important, Warning and Caution colors, so keep them.
+- **Imports** use the `@/` alias.
+- **Dependencies are pinned exactly** (`.npmrc` has `save-exact=true`). TanStack Start is a release candidate and `@pierre/trees` is in beta; upgrade them on purpose, not in passing.

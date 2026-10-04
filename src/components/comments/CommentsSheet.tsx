@@ -35,9 +35,9 @@ function ThreadList({
   const [active, setActive] = useState<string | null>(null)
   if (items.length === 0) return <p className="px-1 py-8 text-center text-sm text-muted-foreground">{empty}</p>
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       {items.map((a) => (
-        <div key={a.thread.id} className="space-y-1">
+        <div key={a.thread.id} className="flex flex-col gap-1">
           <ThreadCard
             anchored={a}
             location={rest.location}
@@ -49,7 +49,7 @@ function ThreadList({
           {(a.state === 'attached' || a.state === 'edited') && a.thread.status === 'open' && (
             <button
               type="button"
-              className="ml-4 text-xs text-link hover:underline"
+              className="ml-4 self-start text-xs text-link hover:underline"
               onClick={() => rest.onReveal(a.thread.id)}
             >
               Show in page
