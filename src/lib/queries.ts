@@ -1,8 +1,22 @@
 import { queryOptions } from '@tanstack/react-query'
 import { getThreadCounts, listThreads } from '@/functions/comments'
 import { fetchFile, fetchFileCommits, fetchRepos, fetchTree, resolveLocation } from '@/functions/content'
+import { getViewer } from '@/functions/viewer'
 
 // Anything keyed by a commit or blob SHA never changes, so it never goes stale.
+
+/**
+ * Signing in and out are full page loads, so the viewer can't change during
+ * a visit. The server render fetches it and the browser reuses that, instead
+ * of asking again on every navigation and preload.
+ */
+export const viewerQuery = () =>
+  queryOptions({
+    queryKey: ['viewer'],
+    queryFn: () => getViewer(),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  })
 
 export const locationQuery = (owner: string, repo: string, splat: string) =>
   queryOptions({

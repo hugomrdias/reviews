@@ -76,9 +76,24 @@ describe('requireRepoAccess', () => {
   })
 
   it('skips the installation check for private repos', async () => {
-    const fetch = stubGitHub({ repoBody: repo({ private: true }) })
+    // Installations load alongside the repo, but a private repo never needs them.
+    const fetch = stubGitHub({ repoBody: repo({ private: true }), installations: [installation('selected')] })
     await expect(requireRepoAccess(session(), 'octo', 'docs')).resolves.toMatchObject({ private: true })
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch.mock.calls.some(([url]) => url.includes('/repositories'))).toBe(false)
+  })
+
+  it('reads every page of a large installation', async () => {
+    const fetch = stubGitHub({ installations: [installation('selected')], installedRepoIds: [REPO_ID] })
+    fetch.mockImplementation(async (url: string) => {
+      if (url.endsWith('/repos/octo/docs')) return Response.json(repo())
+      if (url.includes('/user/installations?')) return Response.json({ installations: [installation('selected')] })
+      const page = Number(new URL(url).searchParams.get('page'))
+      // The repo is on the last of three pages.
+      const repositories = page === 3 ? [{ ...repo(), id: REPO_ID }] : [{ ...repo(), id: page }]
+      return Response.json({ total_count: 201, repositories })
+    })
+    await expect(requireRepoAccess(session(), 'octo', 'docs')).resolves.toMatchObject({ repoId: REPO_ID })
+    expect(fetch.mock.calls.filter(([url]) => url.includes('/repositories')).length).toBe(3)
   })
 
   it.each([

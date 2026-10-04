@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { HeadContent, Scripts, ScriptOnce, createRootRouteWithContext } from '@tanstack/react-router'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { getViewer } from '@/functions/viewer'
+import { viewerQuery } from '@/lib/queries'
 import { appUrl } from '@/lib/site'
 import { getThemePreference, ThemeProvider, themeScript, type Theme } from '@/lib/theme'
 import type { SessionUser } from '@/server/auth/session'
@@ -24,10 +24,10 @@ const FONTS =
   'https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Atkinson+Hyperlegible+Next:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Literata:ital,opsz,wght@0,7..72,400..700;1,7..72,400..700&display=swap'
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-  beforeLoad: async () => {
-    const [viewer, theme] = await Promise.all([getViewer(), getThemePreference()])
-    return { viewer, theme }
-  },
+  beforeLoad: async ({ context }) => ({
+    viewer: await context.queryClient.ensureQueryData(viewerQuery()),
+    theme: getThemePreference(),
+  }),
   head: ({ matches }) => {
     const origin = appUrl()
     // Every page shares the same generic card. File pages are often in private

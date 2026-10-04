@@ -5,7 +5,7 @@ import { MarkdownView, type RepoContext } from './MarkdownView'
 
 vi.mock('@pierre/diffs/react', () => ({ File: () => null }))
 vi.mock('@tanstack/react-start', () => ({
-  createServerFn: () => ({ handler: () => () => 'system' }),
+  createIsomorphicFn: () => ({ server: () => ({ client: () => () => 'system' }) }),
 }))
 vi.mock('@tanstack/react-start/server', () => ({ getCookie: () => undefined }))
 

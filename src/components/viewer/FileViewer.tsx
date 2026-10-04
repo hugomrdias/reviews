@@ -33,7 +33,6 @@ import {
   DrawerVirtualKeyboardProvider,
 } from '@/components/ui/drawer'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useAnchoredThreads } from '@/hooks/useAnchoredThreads'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useThreadMutations } from '@/hooks/useThreadMutations'
@@ -58,17 +57,6 @@ import type { ViewerSearch } from '@/lib/viewer-search'
 import type { SessionUser } from '@/server/auth/session'
 
 const NO_THREADS: ThreadView[] = []
-
-export function ViewerPending() {
-  return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-12">
-      <Skeleton className="h-9 w-2/3" />
-      <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-4 w-11/12" />
-      <Skeleton className="h-4 w-4/5" />
-    </div>
-  )
-}
 
 interface FileViewerProps {
   viewer: SessionUser

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { createServerFn } from '@tanstack/react-start'
+import { createIsomorphicFn } from '@tanstack/react-start'
 import { getCookie } from '@tanstack/react-start/server'
 
 export type Theme = 'light' | 'dark' | 'system'
@@ -10,10 +10,13 @@ function parseTheme(value: string | undefined | null): Theme {
   return value === 'light' || value === 'dark' ? value : 'system'
 }
 
-/** Read on the server so the first paint already has the right class. */
-export const getThemePreference = createServerFn({ method: 'GET' }).handler(() =>
-  parseTheme(getCookie(THEME_COOKIE)),
-)
+/**
+ * The theme cookie. The server reads it so the first paint already has the
+ * right class; the browser reads its own copy, which setTheme keeps current.
+ */
+export const getThemePreference = createIsomorphicFn()
+  .server(() => parseTheme(getCookie(THEME_COOKIE)))
+  .client(() => parseTheme(document.cookie.match(/(?:^|; )theme=(light|dark)/)?.[1]))
 
 /**
  * Runs before first paint. For "system" the server can't know the OS

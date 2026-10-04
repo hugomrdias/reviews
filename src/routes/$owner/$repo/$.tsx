@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { FileViewer, ViewerPending } from '@/components/viewer/FileViewer'
+import { FileViewer } from '@/components/viewer/FileViewer'
+import { ViewerPending } from '@/components/viewer/ViewerPending'
 import { preloadTree } from '@/components/tree/preload'
 import { basename, findReadme } from '@/lib/paths'
 import { fileQuery, locationQuery, threadCountsQuery, threadsQuery, treeQuery } from '@/lib/queries'
