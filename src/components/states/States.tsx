@@ -1,9 +1,10 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import { FileQuestion, FileX, Folder, FileText, LockKeyhole, Timer } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { toSplat } from '@/lib/links'
 import { basename, isMarkdown } from '@/lib/paths'
+import { cn } from '@/lib/utils'
 
 function StateBlock({ icon, title, children }: { icon: ReactNode; title: string; children?: ReactNode }) {
   return (
@@ -24,7 +25,9 @@ export function AppNotInstalled({ owner, installUrl }: { owner: string; installU
         Reviews can only read repositories where its GitHub App is installed. Install it on {owner} and choose
         this repository. If you're not an admin there, GitHub will send your request to one.
       </p>
-      <Button nativeButton={false} render={<a href={href} />}>Install on {owner}</Button>
+      <a href={href} className={cn(buttonVariants())}>
+        Install on {owner}
+      </a>
     </StateBlock>
   )
 }
@@ -36,13 +39,9 @@ export function RepoNotSelected({ owner, settingsUrl }: { owner: string; setting
         The app is installed on {owner}, but this repository isn't in its list, or your account can't read it.
         An admin of {owner} can add it in the installation settings.
       </p>
-      <Button
-        variant="outline"
-        nativeButton={false}
-        render={<a href={settingsUrl} target="_blank" rel="noreferrer" />}
-      >
+      <a href={settingsUrl} target="_blank" rel="noreferrer" className={cn(buttonVariants({ variant: 'outline' }))}>
         Open installation settings
-      </Button>
+      </a>
     </StateBlock>
   )
 }
@@ -51,7 +50,9 @@ export function RepoNotFound() {
   return (
     <StateBlock icon={<FileQuestion />} title="Repository or branch not found">
       <p>Check the address. If the repository is private, make sure your GitHub account can open it.</p>
-      <Button variant="outline" nativeButton={false} render={<Link to="/" />}>Back to your repositories</Button>
+      <Link to="/" className={cn(buttonVariants({ variant: 'outline' }))}>
+        Back to your repositories
+      </Link>
     </StateBlock>
   )
 }
@@ -93,7 +94,9 @@ export function UnviewableFile({
     <StateBlock icon={<FileX />} title={basename(path)}>
       <p>{reason}</p>
       {kind !== 'lfs' && (
-        <Button variant="outline" nativeButton={false} render={<a href={rawHref} />}>Download the file</Button>
+        <a href={rawHref} className={cn(buttonVariants({ variant: 'outline' }))}>
+          Download the file
+        </a>
       )}
     </StateBlock>
   )

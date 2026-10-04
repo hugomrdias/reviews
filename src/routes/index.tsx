@@ -4,9 +4,10 @@ import { z } from 'zod'
 import { RepoLauncher } from '@/components/home/RepoLauncher'
 import { UserMenu } from '@/components/shell/UserMenu'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { reposQuery } from '@/lib/queries'
+import { cn } from '@/lib/utils'
 import type { SessionUser } from '@/server/auth/session'
 
 export const Route = createFileRoute('/')({
@@ -103,9 +104,9 @@ function Welcome({ signin, returnTo }: { signin?: 'failed' | 'expired' | 'cancel
             </Alert>
           ) : null}
           <div className="flex flex-col items-start gap-3">
-            <Button size="lg" nativeButton={false} render={<a href={loginHref} />}>
+            <a href={loginHref} className={cn(buttonVariants({ size: 'lg' }))}>
               <GitHubMark /> {signin === 'cancelled' ? 'Try again' : 'Sign in with GitHub'}
-            </Button>
+            </a>
             <p className="text-sm text-muted-foreground">
               People see a repository, and its comments, only if their GitHub account can read it.
             </p>
@@ -157,9 +158,9 @@ function Repositories({ viewer }: { viewer: SessionUser }) {
                   Install the Reviews GitHub App on your account or an organization, and choose which repositories
                   to share. You can still open any public repository by pasting its link above.
                 </p>
-                <Button className="mt-4" nativeButton={false} render={<a href="/github/install" />}>
+                <a href="/github/install" className={cn(buttonVariants(), 'mt-4')}>
                   Install the GitHub App
-                </Button>
+                </a>
               </div>
             )}
           </div>
