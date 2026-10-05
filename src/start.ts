@@ -1,6 +1,7 @@
 import { createCsrfMiddleware, createMiddleware, createStart } from '@tanstack/react-start'
 
 // Public pages that search engines may index; every other page sends noindex.
+// public/sitemap.xml lists the same pages.
 // The home page must stay on the list: favicon services only know a site's icon
 // once its home page is crawled. Without one, claude.ai's connector list showed
 // the parent domain's icon instead of ours.

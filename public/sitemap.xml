@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The indexable pages: INDEXABLE in src/start.ts. Keep the two lists the same. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://reviews.hugodias.me/</loc></url>
+  <url><loc>https://reviews.hugodias.me/privacy</loc></url>
+</urlset>
