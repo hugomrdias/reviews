@@ -85,11 +85,24 @@ function Privacy() {
             <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare's privacy policy</a>.
           </p>
 
-          <h2>No tracking</h2>
+          <h2>Analytics</h2>
           <p>
-            Reviews has no analytics, ads or third-party scripts, and its fonts are served from Reviews itself. Your
-            browser loads avatars from GitHub, and images in documents from wherever they're hosted, without sending
-            the page address.
+            Reviews counts visits with <a href="https://umami.is">Umami</a>, run by Hugo Dias.
+            For each page you open, your browser sends the page's address and title, the page you came from,
+            your screen size and language, and how quickly the page loaded. On file pages, the address and title are
+            replaced before they leave your browser: Umami sees <code>/:owner/:repo</code> and &ldquo;File&rdquo;,
+            never the repository or file. Query strings and <code>#</code> anchors are left off every address.
+          </p>
+          <p>
+            From the request, Umami works out your browser, operating system, device type and rough location
+            (country, region and city). It counts returning visitors with an id made from your IP address and browser
+            that changes every month, and it doesn't store your IP address or set cookies. To opt out, run{' '}
+            <code>localStorage.setItem('umami.disabled', '1')</code> in your browser's console on this site.
+          </p>
+          <p>
+            Reviews has no ads, and no scripts from anyone else. Its fonts are served from Reviews itself. Your browser
+            loads avatars from GitHub, and images in documents from wherever they're hosted, without sending the page
+            address.
           </p>
 
           <h2>Cookies and browser storage</h2>
@@ -113,13 +126,16 @@ function Privacy() {
               Your browser's local storage keeps the last few files you opened, for the home page. It never leaves
               your browser.
             </li>
+            <li>
+              <code>umami.disabled</code> in local storage, if you set it, turns analytics off.
+            </li>
           </ul>
 
           <h2>Who else handles your data</h2>
           <p>
-            Cloudflare hosts Reviews: its database, caches and logs. GitHub handles sign-in and serves your
-            repositories. Agents you connect receive the comments they ask for. Nobody else gets your data, and it's
-            never sold.
+            Cloudflare hosts Reviews: its database, caches and logs. Railway hosts the Umami analytics. GitHub
+            handles sign-in and serves your repositories. Agents you connect receive the comments they ask for. Nobody
+            else gets your data, and it's never sold.
           </p>
 
           <h2>Removing your data</h2>
