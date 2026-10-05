@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import * as z from 'zod/mini'
 import { RepoLauncher } from '@/components/home/RepoLauncher'
+import { Brand, Credit } from '@/components/home/SiteChrome'
 import { UserMenu } from '@/components/shell/UserMenu'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { buttonVariants } from '@/components/ui/button'
@@ -62,26 +63,6 @@ function Specimen() {
         <p className="mt-1 text-sm leading-snug">Most of the team is in Lisbon now. Could it leave at 10?</p>
       </div>
     </div>
-  )
-}
-
-function Brand() {
-  return (
-    <p className="flex items-center gap-2 text-sm font-semibold">
-      <span className="inline-block h-3 w-5 rounded-[2px] bg-marker-strong" aria-hidden />
-      Reviews
-    </p>
-  )
-}
-
-function Credit({ className }: { className?: string }) {
-  return (
-    <footer className={cn('text-sm text-muted-foreground', className)}>
-      Made by{' '}
-      <a href="https://hugodias.me" rel="author" className="text-link hover:underline">
-        Hugo Dias
-      </a>
-    </footer>
   )
 }
 
