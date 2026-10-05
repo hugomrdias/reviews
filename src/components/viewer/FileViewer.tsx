@@ -25,7 +25,6 @@ import {
   StatePage,
   UnviewableFile,
 } from '@/components/states/States'
-import { Button } from '@/components/ui/button'
 import {
   Drawer,
   DrawerContent,
@@ -156,8 +155,6 @@ function RepoViewer({ viewer, repoSummary, refName, sha, path, search, preloaded
     renderedText: view === 'rendered' ? (index?.text ?? null) : null,
   })
   const groups = groupThreads(anchored)
-  // Comments on the page that still need someone: the mobile button's count.
-  const onPageCount = groups.open.length + groups.addressed.length
 
   // Compare view: base commit, its file, and threads placed on it.
   const { data: history = [] } = useQuery({
@@ -254,21 +251,6 @@ function RepoViewer({ viewer, repoSummary, refName, sha, path, search, preloaded
     setReveal(null)
   }, [reveal, anchored, view, index])
 
-  const comparePicker =
-    view === 'compare' && text ? (
-      <CommitPicker
-        owner={owner}
-        repo={repo}
-        headSha={sha}
-        path={docPath}
-        baseSha={baseSha}
-        threads={threads}
-        onSelect={(base) =>
-          void navigate({ from: '/$owner/$repo/$', to: '.', search: (prev) => ({ ...prev, view: 'compare' as const, base }) })
-        }
-      />
-    ) : null
-
   let body: React.ReactNode
   if (entry.kind === 'missing') body = <FileMissing path={path} refName={refName} />
   else if (entry.kind === 'image') {
@@ -280,21 +262,42 @@ function RepoViewer({ viewer, repoSummary, refName, sha, path, search, preloaded
   } else if (entry.kind === 'binary' || entry.kind === 'too-large' || entry.kind === 'lfs') {
     body = <UnviewableFile kind={entry.kind} path={path} rawHref={rawUrl(ctx, path)} />
   } else if (view === 'compare' && text) {
-    body = baseSha ? (
-      <CompareView
-        path={docPath}
-        base={{ sha: baseSha, text: baseText?.text ?? null }}
-        head={{ sha, text: text.text }}
-        onHead={anchored}
-        onBase={onBase}
-        location={threadLocation}
-        activeId={activeId}
-        onActivate={setActiveId}
-        viewer={viewer}
-        mutations={mutations}
-      />
-    ) : (
-      <p className="text-muted-foreground">This file has only one version, so there's nothing to compare yet.</p>
+    body = (
+      <div className="flex flex-col gap-4">
+        <div>
+          <CommitPicker
+            owner={owner}
+            repo={repo}
+            headSha={sha}
+            path={docPath}
+            baseSha={baseSha}
+            threads={threads}
+            onSelect={(base) =>
+              void navigate({
+                from: '/$owner/$repo/$',
+                to: '.',
+                search: (prev) => ({ ...prev, view: 'compare' as const, base }),
+              })
+            }
+          />
+        </div>
+        {baseSha ? (
+          <CompareView
+            path={docPath}
+            base={{ sha: baseSha, text: baseText?.text ?? null }}
+            head={{ sha, text: text.text }}
+            onHead={anchored}
+            onBase={onBase}
+            location={threadLocation}
+            activeId={activeId}
+            onActivate={setActiveId}
+            viewer={viewer}
+            mutations={mutations}
+          />
+        ) : (
+          <p className="text-muted-foreground">This file has only one version, so there's nothing to compare yet.</p>
+        )}
+      </div>
     )
   } else if (view === 'source' && text) {
     body = (
@@ -334,6 +337,11 @@ function RepoViewer({ viewer, repoSummary, refName, sha, path, search, preloaded
   }
 
   const activeThread = anchored.find((a) => a.thread.id === activeId)
+  // A line comment quotes markdown source; on the page, show the text it marks.
+  const activeQuote =
+    activeThread?.thread.anchor.kind === 'lines' && activeThread.text && index
+      ? index.text.slice(activeThread.text.start, activeThread.text.end)
+      : activeThread?.thread.anchor.quoteExact
   const mobileDrawerOpen = view === 'rendered' && !showMargin && Boolean(draft || activeThread)
 
   return (
@@ -364,7 +372,6 @@ function RepoViewer({ viewer, repoSummary, refName, sha, path, search, preloaded
             setSheetTab(firstTab(groups))
             setSheetOpen(true)
           }}
-          actions={comparePicker}
         />
         {search.from && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-marker/40 px-4 py-2 text-sm md:px-8">
@@ -426,10 +433,10 @@ function RepoViewer({ viewer, repoSummary, refName, sha, path, search, preloaded
             <DrawerHeader className="text-left">
               <DrawerTitle>{draft ? 'New comment' : 'Comment'}</DrawerTitle>
               <DrawerDescription className="line-clamp-2 font-serif italic">
-                {draft?.quoteExact ?? activeThread?.thread.anchor.quoteExact}
+                {draft?.quoteExact ?? activeQuote}
               </DrawerDescription>
             </DrawerHeader>
-            <div className="overflow-y-auto px-4 pt-1 pb-6">
+            <div className="overflow-y-auto px-4 pt-3 pb-6">
               {draft ? (
                 <DraftComposer mutations={mutations} onCancel={() => setDraft(null)} onSubmit={submitDraft} />
               ) : activeThread ? (
@@ -439,18 +446,6 @@ function RepoViewer({ viewer, repoSummary, refName, sha, path, search, preloaded
           </DrawerContent>
         </DrawerVirtualKeyboardProvider>
       </Drawer>
-
-      {!showMargin && view === 'rendered' && onPageCount > 0 && !mobileDrawerOpen && (
-        <Button
-          className="fixed right-4 bottom-4 z-30 shadow-lg"
-          onClick={() => {
-            setSheetTab('open')
-            setSheetOpen(true)
-          }}
-        >
-          {onPageCount === 1 ? '1 comment' : `${onPageCount} comments`}
-        </Button>
-      )}
     </SidebarProvider>
   )
 }

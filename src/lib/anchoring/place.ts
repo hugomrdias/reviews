@@ -1,4 +1,4 @@
-import { linesAt, pageText, type PageText } from '@/lib/markdown/page-text'
+import { linesAt, offsetsAt, pageText, type PageText } from '@/lib/markdown/page-text'
 import { isMarkdown } from '@/lib/paths'
 import type { ThreadView } from '@/lib/threads'
 import { anchorLines, type UnchangedLines } from './line-anchor'
@@ -21,6 +21,16 @@ export interface PlaceOptions {
 export function lazyPageText(path: string, source: string) {
   let page: PageText | null | undefined
   return () => (page === undefined ? (page = isMarkdown(path) ? pageText(source, path) : null) : page)
+}
+
+/**
+ * Where a line comment sits in the rendered page: the text its lines render
+ * to. The page text is built without a browser, so it's only used while it
+ * matches the DOM's. Undefined when it doesn't, or the lines show no text.
+ */
+export function linesOnPage(page: PageText | null, renderedText: string, lines: { start: number; end: number }) {
+  if (page?.text !== renderedText) return undefined
+  return offsetsAt(page, lines.start, lines.end) ?? undefined
 }
 
 /** Where a line comment is in a version of its file: it follows its lines. */

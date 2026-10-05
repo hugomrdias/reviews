@@ -1,7 +1,7 @@
 import { useQueries } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { needsOldSource, unchangedLines } from '@/lib/anchoring/line-anchor'
-import { placeLines, recordedLines } from '@/lib/anchoring/place'
+import { lazyPageText, linesOnPage, placeLines, recordedLines } from '@/lib/anchoring/place'
 import { anchorText, type AnchorState } from '@/lib/anchoring/text-anchor'
 import type { FileResult } from '@/functions/content'
 import { blobTextQuery, fileQuery } from '@/lib/queries'
@@ -78,14 +78,20 @@ export function useAnchoredThreads({ owner, repo, path, threads, blobSha, source
     combine,
   })
 
+  // Parsed at most once per version of the file, and only if a line comment is on the page.
+  const page = useMemo(() => lazyPageText(path, source), [path, source])
+
   return useMemo<AnchoredThread[]>(() => {
     const file = { source, blobSha }
     // One diff per old version, shared by its threads, and only if one needs it.
     const unchanged = new Map([...oldSources].map(([key, old]) => [key, unchangedLines(old, source)]))
+    // On the page, line comments mark the text their lines render to.
+    const lineText = (lines: { start: number; end: number }) =>
+      renderedText === null ? undefined : linesOnPage(page(), renderedText, lines)
     return threads.map((thread) => {
       if (thread.anchor.kind === 'lines') {
         const { state, lines } = placeLines(thread, file, unchanged.get(oldSourceOf(thread).key))
-        return lines ? { thread, state, lines } : { thread, state }
+        return lines ? { thread, state, lines, text: lineText(lines) } : { thread, state }
       }
       if (renderedText !== null) {
         const result = anchorText(renderedText, thread.anchor, thread.blobSha === blobSha)
@@ -98,5 +104,5 @@ export function useAnchoredThreads({ owner, repo, path, threads, blobSha, source
       const lines = recordedLines(thread, blobSha)
       return lines ? { thread, state: 'attached', lines } : { thread, state: 'unplaced' }
     })
-  }, [threads, blobSha, source, renderedText, oldSources])
+  }, [threads, blobSha, source, renderedText, oldSources, page])
 }

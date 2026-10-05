@@ -1,9 +1,10 @@
 import { Link } from '@tanstack/react-router'
-import { MessageSquare } from 'lucide-react'
-import { Fragment, type ReactNode } from 'react'
+import { CheckCheck, MessageSquare, Unlink } from 'lucide-react'
+import { Fragment } from 'react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { toSplat } from '@/lib/links'
 import type { ViewerSearch } from '@/lib/viewer-search'
 import { cn } from '@/lib/utils'
@@ -21,8 +22,6 @@ interface RepoHeaderProps {
   addressedCount: number
   outdatedCount: number
   onOpenComments: () => void
-  /** Extra controls for the current view, such as the commit picker. */
-  actions?: ReactNode
 }
 
 const VIEW_LABEL: Record<View, string> = { rendered: 'Page', source: 'Source', compare: 'Changes' }
@@ -38,14 +37,20 @@ export function RepoHeader({
   addressedCount,
   outdatedCount,
   onOpenComments,
-  actions,
 }: RepoHeaderProps) {
   const segments = path ? path.split('/') : []
+  const commentSummary = [
+    `${openCount} open`,
+    addressedCount > 0 && `${addressedCount} addressed`,
+    outdatedCount > 0 && `${outdatedCount} outdated`,
+  ]
+    .filter(Boolean)
+    .join(', ')
   return (
     <header className="sticky top-0 z-30 flex min-h-12 flex-wrap items-center gap-x-3 gap-y-2 border-b bg-background/90 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/75 md:px-6">
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="data-vertical:h-4 data-vertical:self-center" />
-      <nav aria-label="File path" className="flex min-w-0 flex-1 items-center gap-1 text-sm">
+      <nav aria-label="File path" className="flex min-w-0 flex-1 basis-56 items-center gap-1 text-sm">
         <Link
           to="/$owner/$repo/$"
           params={{ owner, repo, _splat: toSplat(refName, '') }}
@@ -79,7 +84,6 @@ export function RepoHeader({
       </nav>
 
       <div className="flex items-center gap-2">
-        {actions}
         {views.length > 1 && (
           <div role="tablist" aria-label="View" className="inline-flex rounded-md bg-muted p-0.5">
             {views.map((v) => (
@@ -100,20 +104,37 @@ export function RepoHeader({
             ))}
           </div>
         )}
-        <Button variant="ghost" size="sm" onClick={onOpenComments} aria-label="All comments on this file">
-          <MessageSquare />
-          <span className="tabular-nums">{openCount}</span>
-          {addressedCount > 0 && (
-            <span className="rounded-sm bg-marker px-1 text-xs tabular-nums text-foreground">
-              {addressedCount} addressed
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2"
+                onClick={onOpenComments}
+                aria-label={`Comments: ${commentSummary}`}
+              />
+            }
+          >
+            <span className="inline-flex items-center gap-1 tabular-nums">
+              <MessageSquare />
+              {openCount}
             </span>
-          )}
-          {outdatedCount > 0 && (
-            <span className="rounded-sm bg-marker px-1 text-xs tabular-nums text-foreground">
-              {outdatedCount} outdated
-            </span>
-          )}
-        </Button>
+            {addressedCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-muted-foreground tabular-nums">
+                <CheckCheck />
+                {addressedCount}
+              </span>
+            )}
+            {outdatedCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-muted-foreground tabular-nums">
+                <Unlink />
+                {outdatedCount}
+              </span>
+            )}
+          </TooltipTrigger>
+          <TooltipContent>{commentSummary}</TooltipContent>
+        </Tooltip>
       </div>
     </header>
   )

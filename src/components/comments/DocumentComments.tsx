@@ -5,7 +5,8 @@ import { MarkdownView, type RepoContext } from '@/components/markdown/MarkdownVi
 import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
 import type { ThreadMutations } from '@/hooks/useThreadMutations'
 import { useTextHighlights } from '@/hooks/useTextHighlights'
-import { selectionLines, textAnchor } from '@/lib/anchoring/draft'
+import { quoteSourceLines, textAnchor } from '@/lib/anchoring/draft'
+import { lazyPageText } from '@/lib/anchoring/place'
 import { buildTextIndex, nodeStart, offsetsToRange, rangeToOffsets, type TextIndex } from '@/lib/anchoring/text-index'
 import type { AnchorData } from '@/lib/threads'
 import { cn } from '@/lib/utils'
@@ -183,6 +184,8 @@ export function DocumentComments({
 
   // Offer "Comment" for selections inside the document.
   const canComment = Boolean(viewer) && mutations.permissions.comment
+  // Built on the first selection, once per version of the file.
+  const page = useMemo(() => lazyPageText(location.path, source), [location.path, source])
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>
     const update = () => {
@@ -201,7 +204,9 @@ export function DocumentComments({
           return
         }
         const offsets = rangeToOffsets(index, range, doc)
-        const anchor = offsets && textAnchor(index.text, offsets.start, offsets.end, selectionLines(range))
+        const anchor =
+          offsets &&
+          textAnchor(index.text, offsets.start, offsets.end, (start, end) => quoteSourceLines(page(), index, start, end))
         if (!anchor) {
           setSelection(null)
           return
@@ -220,7 +225,7 @@ export function DocumentComments({
       clearTimeout(timer)
       document.removeEventListener('selectionchange', update)
     }
-  }, [index, canComment])
+  }, [index, canComment, page])
 
   const startDraft = () => {
     if (!selection) return

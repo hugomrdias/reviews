@@ -43,7 +43,7 @@ export function CommitPicker({ owner, repo, headSha, path, baseSha, threads, onS
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <Button variant="outline" size="sm" role="combobox" aria-expanded={open} className="max-w-72 justify-between gap-2" />
+          <Button variant="outline" size="sm" role="combobox" aria-expanded={open} className="max-w-full justify-between gap-2" />
         }
       >
         <span className="truncate">
@@ -58,7 +58,7 @@ export function CommitPicker({ owner, repo, headSha, path, baseSha, threads, onS
         </span>
         <ChevronsUpDown className="opacity-60" />
       </PopoverTrigger>
-      <PopoverContent className="w-96 p-0" align="end">
+      <PopoverContent className="w-[min(24rem,calc(100vw-2rem))] p-0" align="start">
         <Command>
           <CommandInput placeholder="Search commits" />
           <CommandList>
