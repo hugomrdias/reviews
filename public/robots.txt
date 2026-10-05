@@ -1,0 +1,11 @@
+# Pages are open to crawl. Only the home page is indexable; every other page
+# sends X-Robots-Tag: noindex, which crawlers only see if they may fetch it.
+# The paths below are endpoints (sign-in, OAuth, GitHub install, raw file API,
+# MCP, dev preview), not pages, so there's nothing for a crawler there.
+User-agent: *
+Disallow: /api/
+Disallow: /auth/
+Disallow: /oauth/
+Disallow: /github/
+Disallow: /mcp$
+Disallow: /dev/
