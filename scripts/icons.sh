@@ -4,11 +4,15 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# iOS, Android and GitHub round the corners themselves, so their icons are
+# iOS, GitHub and Android round the corners themselves, so their icons are
 # full-bleed: the same mark without the rounded corners.
 square="$(mktemp -t square).svg"
-trap 'rm -f "$square"' EXIT
+# Android's maskable icons show only the middle two thirds, cropped to the launcher's
+# shape, so the mark shrinks to three quarters around its centre (16, 16.5).
+maskable="$(mktemp -t maskable).svg"
+trap 'rm -f "$square" "$maskable"' EXIT
 sed 's/ rx="7"//' public/logo.svg > "$square"
+sed 's|<rect x|<g transform="translate(4 4.125) scale(.75)"><rect x|; s|</svg>|</g></svg>|' "$square" > "$maskable"
 
 render() { magick -background none -density 1536 "$1" -resize "$2x$2" -depth 8 -strip "$3"; }
 
@@ -16,6 +20,8 @@ magick -background none -density 1536 public/logo.svg -define icon:auto-resize=4
 render "$square" 180 public/apple-touch-icon.png
 render "$square" 192 public/icon-192.png
 render "$square" 512 public/icon-512.png
+render "$maskable" 192 public/icon-maskable-192.png
+render "$maskable" 512 public/icon-maskable-512.png
 
 # Chrome renders the card with the app's web fonts; the time budget lets them load.
 chrome="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
