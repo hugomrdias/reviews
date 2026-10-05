@@ -76,3 +76,26 @@ function lineAt(page: PageText, offset: number) {
 export function linesAt(page: PageText, start: number, end: number) {
   return { start: lineAt(page, start), end: lineAt(page, Math.max(start, end - 1)) }
 }
+
+/**
+ * The page text that source lines render to, the other way from linesAt:
+ * where a line comment sits on the page. Trimmed to words; null when the
+ * lines show no text, such as blank lines or a code block.
+ */
+export function offsetsAt(page: PageText, startLine: number, endLine: number) {
+  let start = -1
+  let end = -1
+  page.pieces.forEach((piece, i) => {
+    const stop = page.pieces[i + 1]?.start ?? page.text.length
+    let line = piece.line
+    for (let at = piece.start; at < stop; at++) {
+      const char = page.text[at]
+      if (line >= startLine && line <= endLine && !/\s/.test(char)) {
+        if (start < 0) start = at
+        end = at + 1
+      }
+      if (char === '\n') line++
+    }
+  })
+  return start < 0 ? null : { start, end }
+}

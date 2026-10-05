@@ -1,7 +1,7 @@
-import { Bot } from 'lucide-react'
+import { Bot, X } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
 import type { ThreadMutations } from '@/hooks/useThreadMutations'
@@ -90,20 +90,25 @@ export function CommentsSheet({
   onCopyForAgent,
   ...rest
 }: CommentsSheetProps) {
+  // A panel from the right on wide screens; a bottom sheet with a handle on phones, like the comment composer.
   const wide = useMediaQuery('(min-width: 768px)')
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side={wide ? 'right' : 'bottom'}
-        className={wide ? 'flex flex-col gap-0 sm:max-w-md' : 'flex max-h-[85dvh] flex-col gap-0'}
-      >
-        <SheetHeader className="border-b">
-          <SheetTitle>Comments on this file</SheetTitle>
-          <SheetDescription>
+    <Drawer open={open} onOpenChange={onOpenChange} swipeDirection={wide ? 'right' : 'down'} showSwipeHandle={!wide}>
+      <DrawerContent className="data-[swipe-axis=x]:md:[--drawer-content-width:28rem]">
+        <DrawerHeader className="relative gap-1.5 border-b pb-4 group-data-[swipe-axis=y]/drawer-popup:text-left">
+          {wide && (
+            <DrawerClose
+              render={<Button variant="ghost" size="icon-sm" className="absolute top-3 right-3" aria-label="Close" />}
+            >
+              <X />
+            </DrawerClose>
+          )}
+          <DrawerTitle>Comments on this file</DrawerTitle>
+          <DrawerDescription className="text-pretty">
             Addressed comments are ones an agent says it fixed, waiting for a person to confirm. Outdated comments point
             at text that has since changed or been removed.
             {!rest.mutations.permissions.comment && ' You can read comments here; writing them needs write access to the repository.'}
-          </SheetDescription>
+          </DrawerDescription>
           <Button
             variant="outline"
             size="sm"
@@ -114,7 +119,7 @@ export function CommentsSheet({
             <Bot data-icon="inline-start" />
             Copy for agent
           </Button>
-        </SheetHeader>
+        </DrawerHeader>
         <Tabs value={tab} onValueChange={(v) => onTabChange(v as typeof tab)} className="min-h-0 flex-1 gap-0">
           <TabsList activateOnFocus className="mx-4 mt-3 w-[calc(100%-2rem)]">
             <TabsTrigger value="open">Open {groups.open.length}</TabsTrigger>
@@ -143,7 +148,7 @@ export function CommentsSheet({
             </TabsContent>
           </div>
         </Tabs>
-      </SheetContent>
-    </Sheet>
+      </DrawerContent>
+    </Drawer>
   )
 }

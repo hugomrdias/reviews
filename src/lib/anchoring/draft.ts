@@ -1,12 +1,18 @@
+import { linesAt, type PageText } from '../markdown/page-text'
 import { CONTEXT_LENGTH, MAX_QUOTE_LENGTH, type AnchorData } from '../threads'
 import { quoteLines } from './line-anchor'
+import { offsetsToRange, type TextIndex } from './text-index'
 
-/** Builds the anchor for a selection in the rendered text. */
+/**
+ * Builds the anchor for a selection in the rendered text. `linesFor` maps the
+ * trimmed quote back to source lines: a triple-click selection runs on to the
+ * start of the next block, so lines read from the raw selection overshoot.
+ */
 export function textAnchor(
   text: string,
   rawStart: number,
   rawEnd: number,
-  lines: { start: number; end: number } | null,
+  linesFor: (start: number, end: number) => { start: number; end: number } | null,
 ): AnchorData | null {
   let start = rawStart
   let end = Math.min(rawEnd, rawStart + MAX_QUOTE_LENGTH)
@@ -14,6 +20,7 @@ export function textAnchor(
   while (start < end && /\s/.test(text[start])) start++
   while (end > start && /\s/.test(text[end - 1])) end--
   if (end <= start) return null
+  const lines = linesFor(start, end)
   return {
     kind: 'text',
     quoteExact: text.slice(start, end),
@@ -52,4 +59,16 @@ export function selectionLines(range: Range): { start: number; end: number } | n
   const end = Number(endEl?.getAttribute('data-eline'))
   if (!start || !end) return null
   return { start: Math.min(start, end), end: Math.max(start, end) }
+}
+
+/**
+ * Source lines of a quote on the page. The page text built from the source,
+ * as the server builds it, gives exact lines, the ones agents and the Source
+ * tab work out. If it doesn't match the DOM's text, fall back to the lines
+ * of the blocks the quote is in.
+ */
+export function quoteSourceLines(page: PageText | null, index: TextIndex, start: number, end: number) {
+  if (page?.text === index.text) return linesAt(page, start, end)
+  const quoted = offsetsToRange(index, start, end)
+  return quoted && selectionLines(quoted)
 }

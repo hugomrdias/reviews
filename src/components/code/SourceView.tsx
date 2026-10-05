@@ -50,6 +50,8 @@ export function SourceView({
   sourceRef.current = source
   const onDraftRef = useRef(onDraft)
   onDraftRef.current = onDraft
+  const onActivateRef = useRef(onActivate)
+  onActivateRef.current = onActivate
 
   const file = useMemo(
     () => ({ name: basename(location.path), contents: source, cacheKey: `${blobSha}` }),
@@ -66,6 +68,11 @@ export function SourceView({
       onGutterUtilityClick: (range: { start: number; end: number }) => {
         onDraftRef.current(linesAnchor(sourceRef.current, range.start, range.end))
       },
+      // An open thread selects its lines, and a selection pins the "+" to it.
+      // Clicking any line lets go of the thread, as clicking away does on the page.
+      onLineClick: () => onActivateRef.current(null),
+      // onLineClick makes Diffs give every line a pointer cursor; it's still text to read and select.
+      unsafeCSS: '[data-interactive-lines] [data-line] { cursor: auto; }',
     }),
     [diffsTheme, location.path, viewer, mutations.permissions.comment],
   )
