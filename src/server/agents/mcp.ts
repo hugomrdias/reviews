@@ -14,6 +14,16 @@ import * as tools from './tools'
 // The MCP endpoint. Stateless: each request builds a server, handles one
 // JSON-RPC message, and is done, so there's nothing to keep between requests.
 
+/** The site's icons as absolute URLs, for clients that show them next to the connector. */
+export function icons(appUrl: string) {
+  const origin = new URL(appUrl).origin
+  return [
+    { src: `${origin}/logo.svg`, mimeType: 'image/svg+xml' },
+    { src: `${origin}/icon-512.png`, mimeType: 'image/png', sizes: ['512x512'] },
+    { src: `${origin}/icon-192.png`, mimeType: 'image/png', sizes: ['192x192'] },
+  ]
+}
+
 /** The server's working rules. They name the site, so "use reviews.example.com" leads an agent here. */
 export function instructions(appUrl: string) {
   return `Reviews (${new URL(appUrl).host}) holds comments people left on markdown and source files in GitHub repositories. You act as the person who connected you, with their GitHub access.
@@ -64,7 +74,10 @@ async function run<T extends object>(work: () => Promise<T>, text: (result: T) =
 
 /** The server for one request. Its write tools land in `writeTools`, which a client with only the read scope steps up for. */
 export function buildServer(ctx: tools.ToolContext, writeTools = new Set<string>()) {
-  const server = new McpServer({ name: 'reviews', title: 'Reviews', version: '1.0.0' }, { instructions: instructions(ctx.appUrl) })
+  const server = new McpServer(
+    { name: 'reviews', title: 'Reviews', version: '1.0.0', icons: icons(ctx.appUrl) },
+    { instructions: instructions(ctx.appUrl) },
+  )
   const registerTool = toolRegistrar(server, writeTools)
 
   registerTool(

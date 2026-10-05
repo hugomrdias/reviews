@@ -8,7 +8,7 @@ import { getDb } from '../db/client'
 import type { RepoAccess } from '../github/access'
 import { AuthError, GitHubError, NotFoundError, RateLimitError } from '../github/client'
 import { READ, WRITE, type AgentProps } from './grant'
-import { agentErrorMessage, buildServer, instructions, mcpHandler } from './mcp'
+import { agentErrorMessage, buildServer, icons, instructions, mcpHandler } from './mcp'
 import { ToolError, type RepoReader } from './tools'
 
 const repo: RepoAccess = {
@@ -151,8 +151,9 @@ describe('the MCP endpoint', () => {
     }
     const res = await mcpHandler.fetch(rpc(init), env, ctx([READ]))
     expect(res.status).toBe(200)
-    const body = (await res.json()) as { result: { serverInfo: { name: string }; instructions: string } }
+    const body = (await res.json()) as { result: { serverInfo: { name: string; icons: unknown }; instructions: string } }
     expect(body.result.serverInfo.name).toBe('reviews')
+    expect(body.result.serverInfo.icons).toEqual(icons(env.APP_URL))
     expect(body.result.instructions).toBe(instructions(env.APP_URL))
     expect(res.headers.get('mcp-session-id')).toBeNull()
   })
