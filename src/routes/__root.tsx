@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { HeadContent, Scripts, ScriptOnce, createRootRouteWithContext } from '@tanstack/react-router'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { analyticsScript } from '@/lib/analytics'
 import { viewerQuery } from '@/lib/queries'
 import { appUrl } from '@/lib/site'
 import { getThemePreference, ThemeProvider, themeScript, type Theme } from '@/lib/theme'
@@ -64,6 +65,23 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         // For coding agents: how to connect over MCP. See src/server/agents/guide.ts.
         { rel: 'alternate', type: 'text/markdown', href: '/llms.txt', title: 'Reviews for coding agents' },
       ],
+      scripts: [
+        // Umami on stats.hugomrdias.dev. data-domains keeps local dev and Previews out of the stats,
+        // and data-performance reports Web Vitals (TTFB, FCP, LCP, CLS, INP) per page view.
+        // Private repositories stay out of it: data-before-send redacts file pages (analyticsScript,
+        // in the body), and the search and hash go too, since ?returnTo= and heading anchors can
+        // name what's in a repo.
+        {
+          src: 'https://stats.hugomrdias.dev/script.js',
+          defer: true,
+          'data-website-id': '2755915d-2321-4120-a782-f707b9d62e9e',
+          'data-domains': 'reviews.hugodias.me',
+          'data-before-send': 'umamiBeforeSend',
+          'data-exclude-search': 'true',
+          'data-exclude-hash': 'true',
+          'data-performance': 'true',
+        },
+      ],
     }
   },
   shellComponent: RootDocument,
@@ -87,6 +105,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <ScriptOnce>{themeScript}</ScriptOnce>
+        {/* Not in head(): the client's minified copy wouldn't match the server's, and it would add a second. */}
+        <ScriptOnce>{analyticsScript}</ScriptOnce>
         <ThemeProvider initial={theme}>
           <TooltipProvider delay={300}>
             {children}
