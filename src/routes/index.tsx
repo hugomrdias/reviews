@@ -9,6 +9,8 @@ import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isSafeReturnTo, loginUrl } from '@/lib/auth'
 import { reposQuery } from '@/lib/queries'
+import { appUrl } from '@/lib/site'
+import { homeStructuredData, jsonLd } from '@/lib/structured-data'
 import { cn } from '@/lib/utils'
 import type { SessionUser } from '@/server/auth/session'
 
@@ -17,6 +19,9 @@ export const Route = createFileRoute('/')({
     signin: z.optional(z.enum(['failed', 'expired', 'cancelled'])),
     // Where to go after signing in. Same-site paths only; /auth/login checks again.
     returnTo: z.catch(z.optional(z.string().check(z.maxLength(2048), z.refine(isSafeReturnTo))), undefined),
+  }),
+  head: () => ({
+    scripts: [{ type: 'application/ld+json', children: jsonLd(homeStructuredData(appUrl())) }],
   }),
   loader: async ({ context }) => {
     if (!context.viewer) return
