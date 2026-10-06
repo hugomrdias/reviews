@@ -285,11 +285,15 @@
     max-width: 100%;
     height: auto;
   }
-  .doc table {
-    display: block;
-    width: max-content;
-    max-width: 100%;
+  .doc .table-scroll {
     overflow-x: auto;
+    margin-block: 0 1.1em;
+    container-type: inline-size;
+  }
+  .doc .table-scroll > table {
+    margin: 0;
+  }
+  .doc table {
     border-collapse: collapse;
     font-family: var(--font-sans);
     font-size: 0.9375rem;
@@ -299,6 +303,19 @@
     border: 1px solid var(--rule);
     padding: 0.45em 0.8em;
     text-align: left;
+    /* `anywhere` would let columns collapse to one letter; scroll instead. */
+    overflow-wrap: break-word;
+  }
+  /* On a narrow screen a table of three or more columns scrolls anyway, so
+     give each column room to read instead of squeezing them into the width.
+     Two columns still fit. */
+  @container (width < 32rem) {
+    .doc table:has(tr > :nth-child(3)) {
+      width: max-content;
+      & :where(th, td) {
+        max-width: 16rem;
+      }
+    }
   }
   .doc th {
     font-weight: 600;
