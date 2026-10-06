@@ -124,6 +124,15 @@ function MdPre({ node, children }: ComponentProps<'pre'> & { node?: Element }) {
   )
 }
 
+// The wrapper scrolls, so the table itself can size to its content.
+function MdTable({ node: _node, ...rest }: ComponentProps<'table'> & { node?: Element }) {
+  return (
+    <div className="table-scroll">
+      <table {...rest} />
+    </div>
+  )
+}
+
 const ALERTS: Record<AlertType, { icon: ReactNode; tone: string }> = {
   note: { icon: <Info />, tone: 'border-l-sky-600 [&_svg]:text-sky-600' },
   tip: { icon: <Lightbulb />, tone: 'border-l-emerald-600 [&_svg]:text-emerald-600' },
@@ -171,6 +180,7 @@ export const MarkdownView = memo(function MarkdownView({
       source: (props) => <MdSource {...props} ctx={ctx} />,
       pre: MdPre,
       blockquote: MdBlockquote,
+      table: MdTable,
     }),
     [ctx],
   )
