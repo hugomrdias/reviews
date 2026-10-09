@@ -14,11 +14,13 @@ export const Route = createFileRoute('/$owner/$repo/$')({
     if (!context.viewer) throw redirect({ to: '/', search: { returnTo: location.href } })
   },
   loader: async ({ context: { queryClient }, params }) => {
-    const { owner, repo } = params
     const splat = params._splat ?? ''
-    const loc = await queryClient.ensureQueryData(locationQuery(owner, repo, splat))
+    const loc = await queryClient.ensureQueryData(locationQuery(params.owner, params.repo, splat))
     if (loc.status !== 'ok') return { preloadedTree: null }
 
+    // GitHub's names, not the URL's: the viewer reads its queries by them, and
+    // the URL can use another case or a renamed repo's old name.
+    const { owner, name: repo } = loc.repo
     const { sha, path } = loc.location
     // Counts only need the repo, so they load alongside the file. Comment
     // prefetches never throw: a failed one still shows the file.
