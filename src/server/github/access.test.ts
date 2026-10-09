@@ -1,8 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+// @ts-expect-error The test stub of cloudflare:workers, aliased in vitest.config.ts.
+import { settleBackground } from 'cloudflare:workers'
 import { CodedError } from '@/lib/errors'
 import { canResolve } from '@/lib/threads'
 import type { ActiveSession } from '../auth/session'
-import { checkRepoAccess, requireRepoAccess } from './access'
+import {
+  checkRepoAccess,
+  forgetInstallations,
+  listAllRepos,
+  listInstallationRepos,
+  requireRepoAccess,
+} from './access'
 import { AuthError, GitHubError, NotFoundError } from './client'
 
 // Each test signs in as a new user, so cached answers never leak between tests.
@@ -107,6 +115,94 @@ describe('requireRepoAccess', () => {
     stubGitHub({ repoBody: repo({ private: true, permissions }) })
     const access = await requireRepoAccess(session(), 'octo', 'docs')
     expect(access.permissions).toEqual({ comment, moderate })
+  })
+})
+
+/** Answers installation 7's repos in pages, counting how many pages are in flight at once. */
+function stubPagedRepos(total: () => number) {
+  const stats = { inFlight: 0, maxInFlight: 0 }
+  const fetch = vi.fn(async (url: string) => {
+    if (url.includes('/user/installations?')) return Response.json({ installations: [installation('selected')] })
+    const page = Number(new URL(url).searchParams.get('page'))
+    stats.inFlight++
+    stats.maxInFlight = Math.max(stats.maxInFlight, stats.inFlight)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    stats.inFlight--
+    const count = Math.max(0, Math.min(100, total() - (page - 1) * 100))
+    const repositories = Array.from({ length: count }, (_, i) => ({ ...repo(), id: (page - 1) * 100 + i }))
+    return Response.json({ total_count: total(), repositories })
+  })
+  vi.stubGlobal('fetch', fetch)
+  return { fetch, stats }
+}
+
+describe('listInstallationRepos', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('asks for every page at once once it knows how many there are', async () => {
+    const user = session()
+    const { fetch, stats } = stubPagedRepos(() => 201)
+    expect(await listInstallationRepos(user, 7)).toHaveLength(201)
+    // The first listing has to read the total from page 1.
+    expect(stats.maxInFlight).toBe(2)
+
+    await forgetInstallations(user)
+    fetch.mockClear()
+    stats.maxInFlight = 0
+    expect(await listInstallationRepos(user, 7)).toHaveLength(201)
+    expect(stats.maxInFlight).toBe(3)
+    expect(fetch.mock.calls.filter(([url]) => url.includes('/repositories')).length).toBe(3)
+  })
+
+  it('drops pages past a total that went down', async () => {
+    const user = session()
+    let total = 201
+    stubPagedRepos(() => total)
+    await listInstallationRepos(user, 7)
+    total = 150
+    await forgetInstallations(user)
+    expect(await listInstallationRepos(user, 7)).toHaveLength(150)
+  })
+
+  it('keeps only the fields the app uses', async () => {
+    stubPagedRepos(() => 1)
+    const [listed] = await listInstallationRepos(session(), 7)
+    expect(listed).not.toHaveProperty('permissions')
+    expect(listed.owner).toEqual({ login: 'octo' })
+  })
+})
+
+describe('listAllRepos', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('serves the list stale for longer than access checks', async () => {
+    // Only the clock: the GitHub stub still needs real timeouts.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const user = session()
+    let total = 2
+    stubPagedRepos(() => total)
+    expect(await listAllRepos(user)).toHaveLength(2)
+    total = 3
+    // An hour on, access checks would wait for GitHub; the list doesn't.
+    vi.setSystemTime(Date.now() + 60 * 60 * 1000)
+    expect(await listAllRepos(user)).toHaveLength(2)
+    await settleBackground()
+    expect(await listAllRepos(user)).toHaveLength(3)
+  })
+
+  it('is forgotten when the installations change', async () => {
+    const user = session()
+    let total = 2
+    stubPagedRepos(() => total)
+    await listAllRepos(user)
+    total = 3
+    await forgetInstallations(user)
+    expect(await listAllRepos(user)).toHaveLength(3)
   })
 })
 

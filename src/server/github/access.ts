@@ -93,6 +93,7 @@ interface Installation {
 const installationsKey = (userId: number) => `installations:${userId}`
 const installationReposKey = (userId: number, installationId: number) =>
   `installation-repo-list:${userId}:${installationId}`
+const reposListKey = (userId: number) => `repos-list:${userId}`
 
 /** Call after the user installs or changes the app on GitHub. */
 export async function forgetInstallations(session: ActiveSession) {
@@ -101,6 +102,7 @@ export async function forgetInstallations(session: ActiveSession) {
   const installations = await listInstallations(session).catch(() => [])
   await Promise.all([
     invalidate(installationsKey(session.user.id)),
+    invalidate(reposListKey(session.user.id)),
     ...installations.map((i) => invalidate(installationReposKey(session.user.id, i.id))),
   ])
 }
@@ -138,21 +140,79 @@ interface InstallationReposPage {
   repositories: InstallationRepo[]
 }
 
+// How many pages each installation's repo list had when this isolate last
+// listed it, so the next listing asks for them all at once.
+const knownPages = new Map<string, number>()
+const MAX_REPO_PAGES = 10
+
 /** Repos in an installation that the user can read. */
 export function listInstallationRepos(session: ActiveSession, installationId: number) {
-  return cached(installationReposKey(session.user.id, installationId), 60, async () => {
+  const key = installationReposKey(session.user.id, installationId)
+  return cached(key, 60, async () => {
     const page = (n: number) =>
       githubJson<InstallationReposPage>(
         session.accessToken,
         `/user/installations/${installationId}/repositories?per_page=100&page=${n}`,
       )
-    // 100 per page. The first page gives the total, so the rest load in
-    // parallel. Stop at 1,000 so a huge org can't stall the page.
-    const first = await page(1)
-    const pages = Math.min(10, Math.ceil(first.total_count / 100))
-    const rest = await Promise.all(Array.from({ length: Math.max(0, pages - 1) }, (_, i) => page(i + 2)))
-    return [first, ...rest].flatMap((p) => p.repositories)
+    const pages = (from: number, to: number) =>
+      Promise.all(Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => page(from + i)))
+    // 100 per page. The first page gives the total, so without a known count
+    // the rest wait for it. Stop at 1,000 so a huge org can't stall the page.
+    const guess = knownPages.get(key) ?? 1
+    const head = await pages(1, guess)
+    const total = Math.min(MAX_REPO_PAGES, Math.ceil(head[0].total_count / 100))
+    const tail = await pages(guess + 1, total)
+    if (knownPages.size > 10_000) knownPages.clear()
+    knownPages.set(key, Math.max(1, total))
+    // Pages past the total, from a count that went down, are empty anyway.
+    return [...head, ...tail]
+      .slice(0, total)
+      .flatMap((p) => p.repositories)
+      .map(
+        (r): InstallationRepo => ({
+          id: r.id,
+          full_name: r.full_name,
+          name: r.name,
+          description: r.description,
+          owner: { login: r.owner.login },
+          private: r.private,
+          default_branch: r.default_branch,
+          pushed_at: r.pushed_at,
+        }),
+      )
   }, ACCESS_CACHE)
+}
+
+export interface ListedRepo {
+  /** The installation's account. */
+  account: string
+  repo: InstallationRepo
+}
+
+/**
+ * Every repo in the user's installations, for the home page's list. Only
+ * listed there, never used to grant access, so it's served stale for a day
+ * while it refreshes in the background. Listing a big installation takes
+ * GitHub seconds, and the home page would otherwise wait for it on the first
+ * visit after a few quiet minutes. A repo that was removed shows until that
+ * refresh lands, and opening it still checks access.
+ */
+export function listAllRepos(session: ActiveSession) {
+  return cached(
+    reposListKey(session.user.id),
+    60,
+    async (): Promise<ListedRepo[]> => {
+      const installations = await listInstallations(session)
+      const lists = await Promise.all(
+        installations.map(async (installation) => {
+          const repositories = await listInstallationRepos(session, installation.id)
+          return repositories.map((repo) => ({ account: installation.login, repo }))
+        }),
+      )
+      return lists.flat()
+    },
+    { staleSeconds: 24 * 60 * 60 },
+  )
 }
 
 /** Whether the app is installed on the repo, in an installation the user can see. */

@@ -1,4 +1,4 @@
-import { env } from 'cloudflare:workers'
+import { env, waitUntil } from 'cloudflare:workers'
 import { deleteCookie, getCookie, getRequest, setCookie } from '@tanstack/react-start/server'
 import { and, eq, lt } from 'drizzle-orm'
 import { getDb, type Db } from '../db/client'
@@ -217,7 +217,14 @@ async function readActiveSession(): Promise<ActiveSession | null> {
     return null
   }
   if (Date.now() - found.session.lastSeenAt > TOUCH_INTERVAL_MS) {
-    await getDb().update(sessions).set({ lastSeenAt: Date.now() }).where(eq(sessions.id, id))
+    // Bookkeeping only, so the page doesn't wait for the write.
+    waitUntil(
+      getDb()
+        .update(sessions)
+        .set({ lastSeenAt: Date.now() })
+        .where(eq(sessions.id, id))
+        .catch(() => {}),
+    )
   }
   const { id: userId, login, name, avatarUrl } = found.user
   // The session ID is the cookie's hash, not the cookie.

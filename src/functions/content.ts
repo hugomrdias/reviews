@@ -2,13 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { isDirectory } from '@/lib/paths'
 import type { CommentPermissions } from '@/lib/threads'
-import {
-  diagnoseNoAccess,
-  listInstallationRepos,
-  listInstallations,
-  requireRepoAccess,
-  type NoAccess,
-} from '@/server/github/access'
+import { diagnoseNoAccess, listAllRepos, requireRepoAccess, type NoAccess } from '@/server/github/access'
 import { NotFoundError, RateLimitError } from '@/server/github/client'
 import { getBlobText, getFileCommits, getFileContent, getTree, type FileContent } from '@/server/github/content'
 import { resolveLocation as resolve, type Location } from '@/server/github/refs'
@@ -141,14 +135,7 @@ export interface RepoListItem {
 export const fetchRepos = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async ({ context: { session } }): Promise<RepoListItem[]> => {
-    const installations = await listInstallations(session)
-    const lists = await Promise.all(
-      installations.map(async (installation) => {
-        const repositories = await listInstallationRepos(session, installation.id)
-        return repositories.map((r) => ({ account: installation.login, repo: r }))
-      }),
-    )
-    const repos = lists.flat()
+    const repos = await listAllRepos(session)
     const activity = await repoActivity(
       getDb(),
       repos.map(({ repo: r }) => r.id),
