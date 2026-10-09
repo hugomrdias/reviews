@@ -26,6 +26,8 @@ describe('redactAnalytics', () => {
     expect(redactAnalytics('event', payload)).toEqual(payload)
     expect(redactAnalytics('event', { url: `${origin}/privacy` }).url).toBe(`${origin}/privacy`)
     expect(redactAnalytics('event', { url: `${origin}/auth/login` }).url).toBe(`${origin}/auth/login`)
+    // Umami drops the search (data-exclude-search), which is where a share names the repo.
+    expect(redactAnalytics('event', { url: `${origin}/share` }).url).toBe(`${origin}/share`)
   })
 
   it('keeps external referrers and missing fields', () => {

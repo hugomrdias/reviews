@@ -38,30 +38,54 @@ function preferReadme(path: string, ctx: LinkContext) {
   return path
 }
 
-/** Same-repo github.com blob/tree URLs stay in the app. */
-function fromGitHubUrl(href: string, ctx: LinkContext): ResolvedLink | null {
+/** A GitHub owner or repo name. Never "." or "..", so it stays one path segment. */
+const NAME = /^(?!\.+$)[A-Za-z0-9_.-]{1,100}$/
+
+export interface GitHubLocation {
+  owner: string
+  repo: string
+  /** Set for blob and tree URLs. The repo root has none. */
+  ref?: string
+  /** Everything after the ref. */
+  path: string
+  hash: string
+}
+
+/**
+ * Parses a github.com repo root, blob or tree URL. Other pages (issues, pull
+ * requests) are null. `ref` is the first segment after blob/tree, so a ref
+ * with slashes spills into `path`; `toSplat(ref, path)` joins them back and
+ * the server splits the splat against the repo's real refs.
+ */
+export function parseGitHubUrl(href: string): GitHubLocation | null {
   let url: URL
   try {
     url = new URL(href)
   } catch {
     return null
   }
-  if (url.hostname !== 'github.com') return null
-  const [owner, repo, kind, ref, ...rest] = url.pathname.split('/').filter(Boolean)
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null
+  if (url.hostname !== 'github.com' && url.hostname !== 'www.github.com') return null
+  const [owner, name, kind, ref, ...rest] = url.pathname.split('/').filter(Boolean)
+  const repo = name?.replace(/\.git$/, '')
+  if (!owner || !repo || !NAME.test(owner) || !NAME.test(repo)) return null
+  const hash = safeDecode(url.hash.slice(1))
+  if (kind === undefined) return { owner, repo, path: '', hash }
+  if ((kind !== 'blob' && kind !== 'tree') || !ref) return null
+  return { owner, repo, ref: safeDecode(ref), path: safeDecode(rest.join('/')), hash }
+}
+
+/** Same-repo github.com blob/tree URLs stay in the app. */
+function fromGitHubUrl(href: string, ctx: LinkContext): ResolvedLink | null {
+  const loc = parseGitHubUrl(href)
   if (
-    owner?.toLowerCase() !== ctx.owner.toLowerCase() ||
-    repo?.toLowerCase() !== ctx.repo.toLowerCase() ||
-    (kind !== 'blob' && kind !== 'tree') ||
-    !ref
+    !loc?.ref ||
+    loc.owner.toLowerCase() !== ctx.owner.toLowerCase() ||
+    loc.repo.toLowerCase() !== ctx.repo.toLowerCase()
   ) {
     return null
   }
-  return {
-    kind: 'internal',
-    path: safeDecode(rest.join('/')),
-    hash: safeDecode(url.hash.slice(1)),
-    ref: safeDecode(ref),
-  }
+  return { kind: 'internal', path: loc.path, hash: loc.hash, ref: loc.ref }
 }
 
 /**
@@ -99,4 +123,31 @@ export function resolveAssetPath(src: string, currentPath: string): string | nul
 /** Builds the router splat for a ref + path. */
 export function toSplat(ref: string, path: string) {
   return path ? `${ref}/${path}` : ref
+}
+
+/** github.com links in free text, with or without the scheme. Not gist.github.com or notgithub.com. */
+const GITHUB_URL = /(?<![\w.-])(?:https?:\/\/)?(?:www\.)?github\.com\/[^\s<>"'`]+/gi
+
+/** What the manifest's share_target sends to /share. */
+export interface SharedData {
+  title?: string
+  text?: string
+  url?: string
+}
+
+/**
+ * The repo, folder or file a share into the app points at: the first usable
+ * github.com link in `url`, then `text`, then `title`. Android apps often put
+ * the link in `text`, between other words.
+ */
+export function sharedLocation(shared: SharedData): GitHubLocation | null {
+  for (const value of [shared.url, shared.text, shared.title]) {
+    for (const [match] of value?.matchAll(GITHUB_URL) ?? []) {
+      // Punctuation that ends a sentence or closes a bracket isn't part of the link.
+      const href = match.replace(/[.,;:!?)\]}]+$/, '')
+      const loc = parseGitHubUrl(/^https?:/i.test(href) ? href : `https://${href}`)
+      if (loc) return loc
+    }
+  }
+  return null
 }

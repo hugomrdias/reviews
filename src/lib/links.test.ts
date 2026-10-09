@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveAssetPath, resolveRepoLink, type LinkContext } from './links'
+import { parseGitHubUrl, resolveAssetPath, resolveRepoLink, sharedLocation, type LinkContext } from './links'
 
 const paths = ['README.md', 'docs/README.md', 'docs/guide/setup.md', 'docs/api.md', 'img/logo.png', 'src/index.ts']
 const ctx: LinkContext = {
@@ -74,5 +74,93 @@ describe('resolveAssetPath', () => {
   it('ignores external URLs', () => {
     expect(resolveAssetPath('https://example.com/a.png', ctx.path)).toBeNull()
     expect(resolveAssetPath('data:image/png;base64,xx', ctx.path)).toBeNull()
+  })
+})
+
+describe('parseGitHubUrl', () => {
+  it('parses repo roots', () => {
+    expect(parseGitHubUrl('https://github.com/acme/widgets')).toEqual({
+      owner: 'acme',
+      repo: 'widgets',
+      path: '',
+      hash: '',
+    })
+    expect(parseGitHubUrl('https://www.github.com/acme/widgets.git/#readme')).toEqual({
+      owner: 'acme',
+      repo: 'widgets',
+      path: '',
+      hash: 'readme',
+    })
+  })
+
+  it('parses blob and tree URLs, leaving slashed refs for the server to split', () => {
+    expect(parseGitHubUrl('https://github.com/acme/widgets/blob/main/docs/my%20notes.md#L10-L12')).toEqual({
+      owner: 'acme',
+      repo: 'widgets',
+      ref: 'main',
+      path: 'docs/my notes.md',
+      hash: 'L10-L12',
+    })
+    expect(parseGitHubUrl('https://github.com/acme/widgets/tree/feature/x/docs')).toEqual({
+      owner: 'acme',
+      repo: 'widgets',
+      ref: 'feature',
+      path: 'x/docs',
+      hash: '',
+    })
+  })
+
+  it('rejects other pages and hosts', () => {
+    expect(parseGitHubUrl('https://github.com/acme/widgets/issues/1')).toBeNull()
+    expect(parseGitHubUrl('https://github.com/acme/widgets/blob')).toBeNull()
+    expect(parseGitHubUrl('https://github.com/acme')).toBeNull()
+    expect(parseGitHubUrl('https://gist.github.com/acme/widgets')).toBeNull()
+    expect(parseGitHubUrl('https://github.com.evil.example/acme/widgets')).toBeNull()
+    expect(parseGitHubUrl('javascript://github.com/acme/widgets')).toBeNull()
+    expect(parseGitHubUrl('https://github.com/acme/%2Fevil.example')).toBeNull()
+  })
+})
+
+describe('sharedLocation', () => {
+  const file = { owner: 'acme', repo: 'widgets', ref: 'main', path: 'docs/api.md', hash: 'auth' }
+
+  it('reads url first', () => {
+    expect(
+      sharedLocation({
+        url: 'https://github.com/acme/widgets/blob/main/docs/api.md#auth',
+        text: 'https://github.com/other/repo',
+      }),
+    ).toEqual(file)
+  })
+
+  it('finds the link inside shared text', () => {
+    expect(
+      sharedLocation({
+        title: 'api.md',
+        text: 'Check out this file: https://github.com/acme/widgets/blob/main/docs/api.md#auth.',
+      }),
+    ).toEqual(file)
+    expect(sharedLocation({ text: '(see github.com/acme/widgets/blob/main/docs/api.md#auth)' })).toEqual(file)
+  })
+
+  it('skips links that are not repos, files or folders', () => {
+    expect(
+      sharedLocation({
+        url: 'https://example.com/acme/widgets',
+        text: 'https://github.com/acme/widgets/pull/3 touches https://github.com/acme/widgets/tree/main/docs',
+      }),
+    ).toEqual({ owner: 'acme', repo: 'widgets', ref: 'main', path: 'docs', hash: '' })
+    expect(sharedLocation({ title: 'acme/widgets on GitHub', text: 'https://github.com/acme/widgets' })).toEqual({
+      owner: 'acme',
+      repo: 'widgets',
+      path: '',
+      hash: '',
+    })
+  })
+
+  it('returns null when nothing usable was shared', () => {
+    expect(sharedLocation({})).toBeNull()
+    expect(sharedLocation({ text: 'hello', url: 'https://notgithub.com/acme/widgets' })).toBeNull()
+    expect(sharedLocation({ text: 'https://github.com/acme/widgets/issues/1' })).toBeNull()
   })
 })
