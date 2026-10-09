@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CodedError } from '@/lib/errors'
 import type { ActiveSession } from './auth/session'
 import type { RepoAccess } from './github/access'
-import { AuthError } from './github/client'
+import { AuthError, githubJson } from './github/client'
 import { authMiddleware, commentableRepoMiddleware, repoMiddleware } from './middleware'
 
-const sessions = vi.hoisted(() => ({ loadSession: vi.fn(), deleteSessionById: vi.fn() }))
+const sessions = vi.hoisted(() => ({ loadSession: vi.fn(), renewAccessToken: vi.fn() }))
 vi.mock('./auth/session', () => sessions)
 
 // Each test signs in as a new user, so cached access checks never leak between tests.
@@ -59,15 +59,30 @@ describe('authMiddleware', () => {
     await expect(runServer(authMiddleware, {})).rejects.toEqual(new CodedError('UNAUTHENTICATED'))
   })
 
-  it('drops the session and throws UNAUTHENTICATED when GitHub rejects the token', async () => {
-    const active = session()
-    sessions.loadSession.mockResolvedValue(active)
+  it('throws UNAUTHENTICATED when GitHub rejects the token', async () => {
+    sessions.loadSession.mockResolvedValue(session())
     const server = (authMiddleware.options as { server: (ctx: object) => Promise<unknown> }).server
     const next = async () => {
       throw new AuthError('GitHub rejected the token', 401)
     }
     await expect(server({ context: {}, next })).rejects.toEqual(new CodedError('UNAUTHENTICATED'))
-    expect(sessions.deleteSessionById).toHaveBeenCalledWith(active.id)
+  })
+
+  it('retries GitHub calls with a token another request refreshed', async () => {
+    const active = session()
+    sessions.loadSession.mockResolvedValue(active)
+    sessions.renewAccessToken.mockResolvedValue('refreshed')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit) => {
+        const auth = (init.headers as Record<string, string>).Authorization
+        return auth === 'Bearer refreshed' ? Response.json({ login: 'u' }) : new Response(null, { status: 401 })
+      }),
+    )
+    const server = (authMiddleware.options as { server: (ctx: object) => Promise<unknown> }).server
+    const next = async () => ({ result: await githubJson(active.accessToken, '/user') })
+    await expect(server({ context: {}, next })).resolves.toEqual({ result: { login: 'u' } })
+    expect(sessions.renewAccessToken).toHaveBeenCalledWith(active, 'token')
   })
 })
 

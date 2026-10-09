@@ -1,26 +1,27 @@
 import { createMiddleware } from '@tanstack/react-start'
 import { CodedError } from '@/lib/errors'
 import { repoInput } from '@/functions/schemas'
-import { AuthError } from './github/client'
+import { AuthError, withTokenRenewal } from './github/client'
 import { checkRepoAccess } from './github/access'
-import { deleteSessionById, loadSession } from './auth/session'
+import { loadSession, renewAccessToken } from './auth/session'
 
 /**
  * Requires a signed-in user and passes `{ session }` to the server function.
  * Routes redirect signed-out visitors in `beforeLoad`; this is the backstop
- * for sessions that die mid-visit. A GitHub 401 means the token was revoked,
- * so the session is dropped too.
+ * for sessions that die mid-visit. When GitHub rejects the token, a parallel
+ * request may have refreshed it, so GitHub calls retry with the session's
+ * newer token. Only a session whose latest token GitHub rejects is dropped.
  */
 export const authMiddleware = createMiddleware({ type: 'function' }).server(async ({ next }) => {
   const session = await loadSession()
   if (!session) throw new CodedError('UNAUTHENTICATED')
   try {
-    return await next({ context: { session } })
+    return await withTokenRenewal(
+      (rejected) => renewAccessToken(session, rejected),
+      () => next({ context: { session } }),
+    )
   } catch (error) {
-    if (error instanceof AuthError) {
-      await deleteSessionById(session.id)
-      throw new CodedError('UNAUTHENTICATED')
-    }
+    if (error instanceof AuthError) throw new CodedError('UNAUTHENTICATED')
     throw error
   }
 })

@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers'
 import { deleteCookie, getCookie, getRequest, setCookie } from '@tanstack/react-start/server'
-import { eq, lt } from 'drizzle-orm'
+import { and, eq, lt } from 'drizzle-orm'
 import { getDb, type Db } from '../db/client'
 import { tagInvocation } from '../tracing'
 import { sessions, users, type User } from '../db/schema'
@@ -95,11 +95,6 @@ export async function destroySession() {
   clearSessionCookie()
 }
 
-export async function deleteSessionById(id: string) {
-  await getDb().delete(sessions).where(eq(sessions.id, id))
-  loaded.delete(getRequest())
-}
-
 async function readSession(id: string) {
   const rows = await getDb()
     .select({ session: sessions, user: users })
@@ -156,6 +151,42 @@ async function freshAccessToken(row: typeof sessions.$inferSelect): Promise<stri
       }
     })().finally(() => inflight.delete(row.id))
     inflight.set(row.id, pending)
+  }
+  return pending
+}
+
+// Renewals in flight per session, so parallel GitHub calls that fail together share one.
+const renewing = new WeakMap<ActiveSession, Promise<string | null>>()
+
+/**
+ * Called when GitHub rejects `rejected`, a token of `session`. Another request
+ * may have refreshed the session since this one loaded it, which kills the old
+ * token. Returns the newer token and switches `session` to it, so the rest of
+ * the request uses it too. Returns null, and deletes the session, when GitHub
+ * rejected the token the session still holds.
+ */
+export function renewAccessToken(session: ActiveSession, rejected: string): Promise<string | null> {
+  // An earlier renewal in this request already moved past this token.
+  if (session.accessToken !== rejected) return Promise.resolve(session.accessToken)
+  let pending = renewing.get(session)
+  if (!pending) {
+    pending = (async () => {
+      const found = await readSession(session.id)
+      const latest = found && (await freshAccessToken(found.session))
+      if (latest && latest !== rejected) {
+        session.accessToken = latest
+        return latest
+      }
+      if (found) {
+        // Only if no other request refreshed it in the meantime.
+        await getDb()
+          .delete(sessions)
+          .where(and(eq(sessions.id, session.id), eq(sessions.accessTokenEnc, found.session.accessTokenEnc)))
+      }
+      loaded.delete(getRequest())
+      return null
+    })().finally(() => renewing.delete(session))
+    renewing.set(session, pending)
   }
   return pending
 }

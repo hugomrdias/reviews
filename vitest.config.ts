@@ -30,7 +30,7 @@ export default defineConfig(async () => {
                 compatibilityFlags: ['nodejs_compat'],
                 d1Databases: ['DB'],
                 kvNamespaces: ['OAUTH_KV'],
-                bindings: { APP_URL: 'http://localhost:3000', TEST_MIGRATIONS: migrations },
+                bindings: { APP_URL: 'http://localhost:3000', SESSION_SECRET: 'test-session-secret', TEST_MIGRATIONS: migrations },
               },
             }),
           ],
