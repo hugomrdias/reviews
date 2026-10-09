@@ -1,10 +1,16 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { isDirectory } from '@/lib/paths'
 import type { CommentPermissions } from '@/lib/threads'
 import { diagnoseNoAccess, listAllRepos, requireRepoAccess, type NoAccess } from '@/server/github/access'
 import { NotFoundError, RateLimitError } from '@/server/github/client'
-import { getBlobText, getFileCommits, getFileContent, getTree, type FileContent } from '@/server/github/content'
+import {
+  getBlobText,
+  getFileCommits,
+  getFileContent,
+  getPathEntry,
+  getTree,
+  type FileContent,
+} from '@/server/github/content'
 import { resolveLocation as resolve, type Location } from '@/server/github/refs'
 import { repoActivity } from '@/server/comments/store'
 import { getDb } from '@/server/db/client'
@@ -34,21 +40,22 @@ export const resolveLocation = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .validator(repoInput.extend({ splat: z.string().max(2048) }))
   .handler(async ({ data, context: { session } }): Promise<LocationResult> => {
+    const checked = requireRepoAccess(session, data.owner, data.repo)
+    // The ref resolves alongside the access check rather than after it, which
+    // saves a GitHub round trip. It uses the user's own token, so it can't
+    // read anything they couldn't, and nothing from it is returned until
+    // access is confirmed. Refused access is handled below, not here.
+    const defaultBranch = checked.then((a) => a.defaultBranch)
+    defaultBranch.catch(() => {})
+    const resolving = resolve(session.accessToken, data.owner, data.repo, data.splat, defaultBranch)
+    resolving.catch(() => {})
     try {
-      const access = await requireRepoAccess(session, data.owner, data.repo).catch(
-        async (error): Promise<NoAccess> => {
-          if (!(error instanceof NotFoundError)) throw error
-          return diagnoseNoAccess(session, data.owner)
-        },
-      )
+      const access = await checked.catch(async (error): Promise<NoAccess> => {
+        if (!(error instanceof NotFoundError)) throw error
+        return diagnoseNoAccess(session, data.owner)
+      })
       if ('status' in access) return access
-      const location = await resolve(
-        session.accessToken,
-        access.owner,
-        access.name,
-        data.splat,
-        access.defaultBranch,
-      )
+      const location = await resolving
       return {
         status: 'ok',
         repo: {
@@ -82,17 +89,17 @@ export const fetchFile = createServerFn({ method: 'GET' })
   .middleware([repoMiddleware])
   .validator(fileInput)
   .handler(async ({ data, context: { session, access } }): Promise<FileResult> => {
-    const tree = await getTree(session.accessToken, access.repoId, access.owner, access.name, data.sha)
-    const entry = tree.entries.find((e) => e.path === data.path)
-    if (entry) return getFileContent(session.accessToken, access.repoId, access.owner, access.name, entry)
-    const paths = tree.entries.map((e) => e.path)
-    if (isDirectory(data.path, paths)) return { kind: 'directory', path: data.path }
-    return { kind: 'missing', path: data.path }
+    // Not from the tree: the page loads that alongside, and this doesn't wait for it.
+    const found = await getPathEntry(session.accessToken, access.repoId, access.owner, access.name, data.sha, data.path)
+    if (found.kind === 'file') {
+      return getFileContent(session.accessToken, access.repoId, access.owner, access.name, found.entry)
+    }
+    return { kind: found.kind, path: data.path }
   })
 
 /**
  * A text blob by its SHA, or null when it isn't text or GitHub doesn't have
- * it. Cheaper than fetchFile when the blob is already known: no tree lookup.
+ * it. Cheaper than fetchFile when the blob is already known: no path lookup.
  */
 export const fetchBlobText = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])

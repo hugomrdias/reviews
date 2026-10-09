@@ -1,7 +1,7 @@
 import type { ActiveSession } from '../auth/session'
 import { requireRepoAccess } from '../github/access'
 import { NotFoundError } from '../github/client'
-import { getBlobText, getFileContent, getTreeEntry } from '../github/content'
+import { getBlobText, getFileContent, getPathEntry } from '../github/content'
 import { findCommitSha, resolveLocation } from '../github/refs'
 import type { RepoReader } from './tools'
 import type { AgentProps } from './grant'
@@ -24,9 +24,9 @@ export function repoReader(props: AgentProps): RepoReader {
       return { ref: location.ref, sha: location.sha }
     },
     async file(repo, sha, path) {
-      const entry = await getTreeEntry(token, repo.repoId, repo.owner, repo.name, sha, path)
-      if (!entry) return null
-      const content = await getFileContent(token, repo.repoId, repo.owner, repo.name, entry)
+      const found = await getPathEntry(token, repo.repoId, repo.owner, repo.name, sha, path)
+      if (found.kind !== 'file') return null
+      const content = await getFileContent(token, repo.repoId, repo.owner, repo.name, found.entry)
       return content.kind === 'text' ? { source: content.text, blobSha: content.blobSha } : null
     },
     async blob(repo, blobSha) {

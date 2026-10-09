@@ -70,6 +70,17 @@ describe('resolveLocation', () => {
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 
+  it("resolves the root from HEAD without waiting for the default branch's name", async () => {
+    const sha = 'c'.repeat(40)
+    stubGitHub(() => new Response(sha))
+    let name!: (branch: string) => void
+    const defaultBranch = new Promise<string>((resolve) => (name = resolve))
+    const result = resolveLocation('token', 'octo', 'root', '', defaultBranch)
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/commits/HEAD'), expect.anything()))
+    name('trunk')
+    await expect(result).resolves.toEqual({ ref: 'trunk', sha, path: '' })
+  })
+
   it('does not hide 422s from other endpoints', async () => {
     stubGitHub(
       () => new Response('a'.repeat(40)),
