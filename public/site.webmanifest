@@ -1,9 +1,23 @@
 {
   "name": "Reviews",
+  "short_name": "Reviews",
+  "description": "Read and comment on the docs in your GitHub repos.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f7f9",
+  "theme_color": "#f6f7f9",
+  "launch_handler": { "client_mode": "navigate-existing" },
   "icons": [
     { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192" },
     { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512" },
     { "src": "/icon-maskable-192.png", "type": "image/png", "sizes": "192x192", "purpose": "maskable" },
     { "src": "/icon-maskable-512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "/screenshots/narrow-page.png", "type": "image/png", "sizes": "1080x2340", "form_factor": "narrow", "label": "A repository's markdown, rendered the way GitHub shows it, with a highlighted passage" },
+    { "src": "/screenshots/narrow-comment.png", "type": "image/png", "sizes": "1080x2340", "form_factor": "narrow", "label": "A comment thread on a highlighted passage" },
+    { "src": "/screenshots/wide-page.png", "type": "image/png", "sizes": "1920x1200", "form_factor": "wide", "label": "A document with the file tree on the left and comments beside the text" }
   ]
 }

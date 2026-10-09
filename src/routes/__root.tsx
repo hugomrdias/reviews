@@ -36,7 +36,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     return {
       meta: [
         { charSet: 'utf-8' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        // viewport-fit=cover draws the page under Android's gesture bar instead of Chrome's light chin.
+        // Anything pinned to the bottom pads itself with env(safe-area-inset-bottom).
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
         { title: 'Reviews' },
         { name: 'description', content: DESCRIPTION },
         { name: 'author', content: 'Hugo Dias' },
@@ -110,7 +112,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <ThemeProvider initial={theme}>
           <TooltipProvider delay={300}>
             {children}
-            <Toaster position="bottom-center" />
+            <Toaster
+              position="bottom-center"
+              offset={{ bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}
+              mobileOffset={{ bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
+            />
           </TooltipProvider>
         </ThemeProvider>
         <Scripts />
