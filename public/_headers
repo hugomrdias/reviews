@@ -1,0 +1,22 @@
+# Workers Static Assets rules. They apply only to files served from static
+# assets; pages and /llms.txt come from the Worker, which sets its own.
+
+# Built files have a content hash in their name, so browsers can keep them for
+# good instead of revalidating on every load.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The Worker sends this on its responses; static files need it too.
+/*
+  X-Content-Type-Options: nosniff
+
+# Icons, the logo, the social card and the manifest keep their names, so a day,
+# then served while they revalidate. The card's ?v= is a new URL when it changes.
+/favicon.ico
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/logo.svg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/*.png
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/site.webmanifest
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
