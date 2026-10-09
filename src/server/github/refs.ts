@@ -88,19 +88,23 @@ function matchRefs(token: string, base: string, kind: 'heads' | 'tags', prefix: 
  * Resolves "<ref>/<path>" from the URL to a commit SHA and a path.
  * Order: full SHA, branch, tag, then anything else the commits API accepts
  * (such as a short SHA).
+ *
+ * The default branch is only needed for the repo's root, and can still be
+ * loading: the root's commit comes from HEAD, so it doesn't wait for it.
  */
 export async function resolveLocation(
   token: string,
   owner: string,
   repo: string,
   splat: string,
-  defaultBranch: string,
+  defaultBranch: string | Promise<string>,
 ): Promise<Location> {
   const clean = splat.replace(/^\/+|\/+$/g, '')
   const base = repoBase(owner, repo)
 
   if (!clean) {
-    return { ref: defaultBranch, sha: await commitShaFor(token, base, defaultBranch), path: '' }
+    const [ref, sha] = await Promise.all([defaultBranch, commitShaFor(token, base, 'HEAD')])
+    return { ref, sha, path: '' }
   }
   const first = clean.split('/')[0]
   if (FULL_SHA_PATTERN.test(first)) return { ref: first, sha: first, path: splitRefPath(clean, first) }

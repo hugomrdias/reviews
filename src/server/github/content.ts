@@ -1,6 +1,6 @@
 import { isImage } from '@/lib/paths'
 import { cached, IMMUTABLE_TTL } from '../cache'
-import { githubFetch, githubJson, repoBase } from './client'
+import { githubFetch, githubJson, NotFoundError, repoBase } from './client'
 
 const MAX_TEXT_BYTES = 2 * 1024 * 1024
 
@@ -38,19 +38,6 @@ export function getTree(token: string, repoId: number, owner: string, repo: stri
   })
 }
 
-/** The file at `path` in a commit, or undefined when there's none. */
-export async function getTreeEntry(
-  token: string,
-  repoId: number,
-  owner: string,
-  repo: string,
-  sha: string,
-  path: string,
-) {
-  const tree = await getTree(token, repoId, owner, repo, sha)
-  return tree.entries.find((e) => e.path === path)
-}
-
 export type FileContent =
   | { kind: 'text'; path: string; blobSha: string; size: number; text: string }
   | { kind: 'image'; path: string; blobSha: string; size: number }
@@ -83,16 +70,80 @@ export function getFileContent(
 
 type BlobContent = { kind: 'binary' | 'lfs' | 'too-large' } | { kind: 'text'; text: string }
 
-/** A blob's content, keyed by blob alone. */
-function blobContent(token: string, repoId: number, owner: string, repo: string, blobSha: string) {
+/**
+ * A blob's content, keyed by blob alone. `bytes` are the blob when the caller
+ * already has them, so they're cached without asking GitHub again.
+ */
+function blobContent(
+  token: string,
+  repoId: number,
+  owner: string,
+  repo: string,
+  blobSha: string,
+  bytes?: Uint8Array,
+) {
   return cached<BlobContent>(`blob-content:${repoId}:${blobSha}`, IMMUTABLE_TTL, async () => {
-    const bytes = new Uint8Array(await (await fetchBlob(token, owner, repo, blobSha)).arrayBuffer())
+    bytes ??= new Uint8Array(await (await fetchBlob(token, owner, repo, blobSha)).arrayBuffer())
     // Only reached without a tree entry to check the size first.
     if (bytes.length > MAX_TEXT_BYTES) return { kind: 'too-large' }
     if (looksBinary(bytes)) return { kind: 'binary' }
     const text = new TextDecoder().decode(bytes)
     if (text.startsWith('version https://git-lfs.github.com/spec/v1')) return { kind: 'lfs' }
     return { kind: 'text', text }
+  })
+}
+
+export type PathEntry = { kind: 'file'; entry: TreeEntry } | { kind: 'directory' } | { kind: 'missing' }
+
+interface ContentsFile {
+  type: 'file' | 'symlink' | 'submodule'
+  path: string
+  sha: string
+  size: number
+  /** Base64, for files up to 1 MB. */
+  content?: string
+  encoding?: string
+}
+
+/**
+ * What's at `path` in a commit, without waiting for the tree. One call
+ * answers file, directory or missing, and carries the content of files up to
+ * 1 MB, which goes into the blob cache. A file the cache hasn't seen then
+ * loads alongside the tree instead of after it.
+ *
+ * `onContent` gets the file's bytes when this call downloaded them, so a
+ * caller that serves the file needn't download it again.
+ */
+export function getPathEntry(
+  token: string,
+  repoId: number,
+  owner: string,
+  repo: string,
+  sha: string,
+  path: string,
+  onContent?: (bytes: Uint8Array<ArrayBuffer>) => void,
+) {
+  return cached<PathEntry>(`path-entry:${repoId}:${sha}:${path}`, IMMUTABLE_TTL, async () => {
+    const encoded = path.split('/').map(encodeURIComponent).join('/')
+    let data: ContentsFile | unknown[]
+    try {
+      data = await githubJson(token, `${repoBase(owner, repo)}/contents/${encoded}?ref=${sha}`)
+    } catch (error) {
+      if (error instanceof NotFoundError) return { kind: 'missing' }
+      throw error
+    }
+    if (Array.isArray(data)) return { kind: 'directory' }
+    // The tree skips submodules too.
+    if (data.type === 'submodule') return { kind: 'missing' }
+    const entry = { path, sha: data.sha, size: data.size }
+    // Symlinks and files over 1 MB come without content; theirs loads by blob.
+    if (data.type === 'file' && data.encoding === 'base64' && data.content) {
+      const bytes = Uint8Array.from(atob(data.content), (c) => c.charCodeAt(0))
+      onContent?.(bytes)
+      // Images are never read as text.
+      if (!isImage(path)) await blobContent(token, repoId, owner, repo, data.sha, bytes)
+    }
+    return { kind: 'file', entry }
   })
 }
 

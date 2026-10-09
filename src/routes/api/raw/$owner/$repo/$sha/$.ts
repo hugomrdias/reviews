@@ -7,7 +7,7 @@ import { FULL_SHA_PATTERN } from '@/lib/refs'
 import { loadSession } from '@/server/auth/session'
 import { edgeCache } from '@/server/cache'
 import { checkRepoAccess } from '@/server/github/access'
-import { fetchBlob, getTreeEntry } from '@/server/github/content'
+import { fetchBlob, getPathEntry } from '@/server/github/content'
 
 /**
  * Serves repo files (images in docs, mostly) with the viewer's own GitHub
@@ -34,13 +34,28 @@ export const Route = createFileRoute('/api/raw/$owner/$repo/$sha/$')({
           throw error
         }
 
-        const entry = await getTreeEntry(session.accessToken, access.repoId, access.owner, access.name, sha, path)
-        if (!entry) return new Response('Not found', { status: 404 })
+        // Files up to 1 MB come with the lookup, when it isn't cached yet.
+        let downloaded: Uint8Array<ArrayBuffer> | undefined
+        const found = await getPathEntry(
+          session.accessToken,
+          access.repoId,
+          access.owner,
+          access.name,
+          sha,
+          path,
+          (bytes) => (downloaded = bytes),
+        )
+        if (found.kind !== 'file') return new Response('Not found', { status: 404 })
+        const { entry } = found
 
         // The edge cache is shared, so the key is the content; access was checked above.
         const cacheKey = new Request(`https://raw-cache.internal/${access.repoId}/${entry.sha}/${extname(path)}`)
         const cache = edgeCache()
-        let body = (await cache?.match(cacheKey))?.body ?? null
+        let body: BodyInit | null = downloaded ?? (await cache?.match(cacheKey))?.body ?? null
+        if (downloaded && cache) {
+          const stored = new Response(downloaded, { headers: { 'Cache-Control': 'max-age=31536000' } })
+          waitUntil(cache.put(cacheKey, stored).catch(() => {}))
+        }
         if (!body) {
           // Streamed, not buffered: one copy goes to the viewer, the other to the cache.
           const blob = (await fetchBlob(session.accessToken, access.owner, access.name, entry.sha)).body
