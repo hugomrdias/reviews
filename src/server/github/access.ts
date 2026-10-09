@@ -44,7 +44,7 @@ const ACCESS_CACHE = { staleSeconds: 5 * 60 }
  * 404 when the app isn't installed on them.
  */
 export function requireRepoAccess(session: ActiveSession, owner: string, repo: string) {
-  const key = `repo-access:${session.user.id}:${owner.toLowerCase()}/${repo.toLowerCase()}`
+  const key = repoAccessKey(session.user.id, owner, repo)
   return cached<RepoAccess>(key, 60, async () => {
     // Fetched alongside the repo rather than after it, which saves a GitHub
     // round trip for public repos. Private repos don't need it, and it's
@@ -57,7 +57,7 @@ export function requireRepoAccess(session: ActiveSession, owner: string, repo: s
     }
     const role = data.permissions
     const maintainer = Boolean(role?.admin || role?.maintain)
-    return {
+    const access: RepoAccess = {
       repoId: data.id,
       owner: data.owner.login,
       name: data.name,
@@ -67,8 +67,16 @@ export function requireRepoAccess(session: ActiveSession, owner: string, repo: s
       ownerId: data.owner.id,
       permissions: { comment: maintainer || Boolean(role?.push), moderate: maintainer },
     }
+    // GitHub answers a renamed repo's old name with the repo under its new
+    // one. The page then asks by the new name, so the answer goes there too.
+    const canonical = repoAccessKey(session.user.id, access.owner, access.name)
+    if (canonical !== key) await cached(canonical, 60, async () => access, ACCESS_CACHE)
+    return access
   }, ACCESS_CACHE)
 }
+
+const repoAccessKey = (userId: number, owner: string, repo: string) =>
+  `repo-access:${userId}:${owner.toLowerCase()}/${repo.toLowerCase()}`
 
 /**
  * requireRepoAccess for server functions and routes: a repo the user can't

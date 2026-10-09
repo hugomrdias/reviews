@@ -105,6 +105,18 @@ describe('requireRepoAccess', () => {
     expect(fetch.mock.calls.filter(([url]) => url.includes('/repositories')).length).toBe(3)
   })
 
+  it("answers a renamed repo's new name from its old name's check", async () => {
+    const user = session()
+    // GitHub follows the old name to the repo, which comes back as octo/docs.
+    const fetch = vi.fn(async (url: string) =>
+      url.endsWith('/repos/octo/old-docs') ? Response.json(repo({ private: true })) : new Response(null, { status: 404 }),
+    )
+    vi.stubGlobal('fetch', fetch)
+    await expect(requireRepoAccess(user, 'octo', 'old-docs')).resolves.toMatchObject({ name: 'docs' })
+    await expect(requireRepoAccess(user, 'Octo', 'Docs')).resolves.toMatchObject({ repoId: REPO_ID })
+    expect(fetch.mock.calls.filter(([url]) => url.includes('/repos/')).length).toBe(1)
+  })
+
   it.each([
     ['read', { pull: true, triage: false, push: false, maintain: false, admin: false }, false, false],
     ['triage', { pull: true, triage: true, push: false, maintain: false, admin: false }, false, false],
