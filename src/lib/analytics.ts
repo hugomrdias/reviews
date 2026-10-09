@@ -8,7 +8,7 @@
  */
 export function redactAnalytics(_type: string, payload: Record<string, unknown>) {
   // The first path segment of every page in src/routes besides /$owner/$repo. Anything else is a file page.
-  const sections = ['', 'privacy', 'auth', 'oauth', 'github', 'dev']
+  const sections = ['', 'privacy', 'share', 'auth', 'oauth', 'github', 'dev']
   const redact = (value: unknown) => {
     if (typeof value !== 'string' || !URL.canParse(value, location.origin)) return value
     const url = new URL(value, location.origin)
