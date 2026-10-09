@@ -20,7 +20,9 @@ interface RouterContext {
 
 const DESCRIPTION = 'Read and comment on the docs in your GitHub repos.'
 
-// The --paper color of each theme, for the browser's toolbar.
+// The --paper color of each theme, for the browser's toolbar and the installed app's status bar.
+// site.webmanifest has no theme_color on purpose: Chrome paints an installed app's navigation
+// bar with it, and it has no dark variant. Without it, the bar follows the phone's theme.
 const THEME_COLORS = { light: '#f6f7f9', dark: '#161b24' }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
@@ -36,7 +38,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     return {
       meta: [
         { charSet: 'utf-8' },
-        // viewport-fit=cover draws the page under Android's gesture bar instead of Chrome's light chin.
+        // viewport-fit=cover draws the page under Android's gesture bar instead of Chrome's light chin
+        // in a Chrome tab. An installed app keeps a navigation bar (see THEME_COLORS).
         // Anything pinned to the bottom pads itself with env(safe-area-inset-bottom).
         { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
         { title: 'Reviews' },
