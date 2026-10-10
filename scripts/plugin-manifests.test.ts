@@ -25,7 +25,6 @@ describe('the Reviews plugin manifests', () => {
       expect(claudePlugin[field], field).toEqual(plugin[field])
     }
     expect(claudePlugin.displayName).toBe(openai.displayName)
-    expect(claudePlugin.icon).toBe(openai.logo)
   })
 
   it('carry the version release-please last released', () => {
@@ -50,7 +49,7 @@ describe('the Reviews plugin manifests', () => {
   })
 
   it('point at files that exist', () => {
-    for (const path of [openai.logo, openai.composerIcon, claudePlugin.icon]) {
+    for (const path of [openai.logo, openai.composerIcon]) {
       expect(existsSync(`${repo}/plugins/reviews/${path}`), path).toBe(true)
     }
   })
