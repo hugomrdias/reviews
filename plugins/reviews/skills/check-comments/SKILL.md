@@ -14,4 +14,4 @@ Use Reviews' `list_threads` and `get_thread` tools, and follow the rules in the 
 
 If `truncated` is true, report that the result is partial. Narrow by file where that can retrieve more of the requested scope; the API has no pagination cursor, so do not claim an exhaustive result while it remains truncated.
 
-If tools are missing or authentication fails, follow [connection setup](../../references/connection.md). A connection failure is not an empty comment list.
+If tools are missing or authentication fails, follow [connection setup](references/connection.md). A connection failure is not an empty comment list.

@@ -16,4 +16,4 @@ Use this workflow when the user requests action on Reviews feedback. The Reviews
 
 Finish with the changed files, checks performed, commit, thread links and any open questions. Report whether the commit has been pushed.
 
-If tools are missing or authentication fails, follow [connection setup](../../references/connection.md).
+If tools are missing or authentication fails, follow [connection setup](references/connection.md).
