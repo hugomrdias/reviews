@@ -10,7 +10,11 @@
   "homepage": "https://reviews.hugodias.me",
   "repository": "https://github.com/hugomrdias/reviews",
   "license": "MIT",
-  "keywords": ["github", "comments", "code-review"],
+  "keywords": [
+    "github",
+    "comments",
+    "code-review"
+  ],
   "extensions": {
     "com.openai": {
       "interface": {
@@ -19,7 +23,10 @@
         "longDescription": "Read comments on markdown and source files in GitHub repositories. Work through requested changes, reply with progress, and mark committed fixes addressed for a person to confirm.",
         "developerName": "Hugo Dias",
         "category": "Developer Tools",
-        "capabilities": ["Read", "Write"],
+        "capabilities": [
+          "Read",
+          "Write"
+        ],
         "websiteURL": "https://reviews.hugodias.me",
         "brandColor": "#ffd43b",
         "composerIcon": "./assets/logo.png",

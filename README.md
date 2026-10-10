@@ -160,6 +160,15 @@ The Setup URL can't use a wildcard, so the dev app's stays at `http://localhost:
 
 All Previews share one database, so a pull request's migrations reach it before the pull request merges. If a migration would break other open Previews, give that branch its own database: change `database_id` in both `previews.d1_databases` and `wrangler.preview-migrations.jsonc`.
 
+## Release
+
+[release-please](https://github.com/googleapis/release-please) versions the app and the plugin from [Conventional Commits](https://www.conventionalcommits.org/), so pull request titles follow them (`feat: …`, `fix: …`), since a squash merge uses the title as the commit message. [`.github/release-please-config.json`](.github/release-please-config.json) lists both, and [`.github/.release-please-manifest.json`](.github/.release-please-manifest.json) holds their current versions.
+
+1. On each push to `main`, the [Release workflow](.github/workflows/release.yml) opens or updates one release pull request. It bumps the version and updates the `CHANGELOG.md` of the app or plugin that a `feat`, `fix`, `perf`, `revert` or `deps` commit touched since its last release. Below 1.0.0, `feat` bumps the minor version and `fix` the patch version. Commits that only touch `plugins/reviews` count for the plugin, not the app.
+2. Merging the release pull request tags each release as `reviews-v<version>` or `reviews-plugin-v<version>` and creates its GitHub release. The app's version is in `package.json`; deploys don't wait for releases. The plugin's version goes into both of its manifests, and Claude Code and Codex only update an installed plugin when that version changes.
+
+Pull requests that `GITHUB_TOKEN` opens do not trigger CI, so set a `RELEASE_PLEASE_TOKEN` secret with a token that can open pull requests to run CI and a Preview on the release pull request.
+
 ## Scripts
 
 | Command | What it does |
