@@ -4,7 +4,7 @@ The plugin connects an agent to Reviews and supplies one shared skill, `review-c
 
 The same folder supports OpenAI's portable Agent Plugins format (`plugin.json` and `mcp.json`) and Claude Code's format (`.claude-plugin/plugin.json` and `.mcp.json`). Both clients read the same `skills/` directory. The server is the existing production endpoint; installing this plugin does not start a local copy of Reviews.
 
-The bundled logo in `assets/logo.png` uses the site's `public/icon-512.png` artwork. OpenAI uses it for the plugin logo and composer icon; Claude's directory metadata points to the same asset.
+The bundled logo in `assets/logo.png` uses the site's `public/icon-512.png` artwork. OpenAI uses it for the plugin logo and composer icon. Claude's manifest has no icon: claude.ai warns about the `icon` key and strips it, and the connector tile shows the favicon of the server's domain instead.
 
 ## Install
 
