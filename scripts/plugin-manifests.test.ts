@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
@@ -16,6 +17,7 @@ const marketplace = read('.agents/plugins/marketplace.json')
 const claudeMarketplace = read('.claude-plugin/marketplace.json')
 const openai = plugin.extensions['com.openai'].interface
 const releases = read('.github/.release-please-manifest.json')
+const skills = readdirSync(`${repo}/plugins/reviews/skills`).sort()
 
 describe('the Reviews plugin manifests', () => {
   it('share their metadata', () => {
@@ -43,9 +45,29 @@ describe('the Reviews plugin manifests', () => {
     expect(marketplace.interface.displayName).toBe(openai.displayName)
   })
 
+  it('declare every skill in the Claude marketplace entry', () => {
+    expect(claudeMarketplace.plugins[0].skills).toEqual(skills.map((skill) => `./skills/${skill}`))
+  })
+
   it('point at files that exist', () => {
     for (const path of [openai.logo, openai.composerIcon, claudePlugin.icon]) {
       expect(existsSync(`${repo}/plugins/reviews/${path}`), path).toBe(true)
+    }
+  })
+})
+
+// `npx skills add` copies only a skill's own directory, so a skill must not
+// link up into the plugin.
+describe('the Reviews plugin skills', () => {
+  it.each(skills)('%s links only to files inside its own directory', (skill) => {
+    const dir = `${repo}/plugins/reviews/skills/${skill}`
+    const links = [...readFileSync(`${dir}/SKILL.md`, 'utf8').matchAll(/\]\(([^)#\s]+)[^)]*\)/g)]
+      .map((match) => match[1])
+      .filter((link) => !/^[a-z]+:/i.test(link))
+    for (const link of links) {
+      const target = join(dir, link)
+      expect(relative(dir, target).startsWith('..'), link).toBe(false)
+      expect(existsSync(target), link).toBe(true)
     }
   })
 })
