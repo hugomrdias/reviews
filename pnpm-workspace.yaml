@@ -4,7 +4,6 @@ allowBuilds:
   sharp: true
   workerd: true
 minimumReleaseAgeExclude:
-  - '@tanstack/intent@0.5.3'
   - '@pnpm/exe.android-arm64@12.9.1'
   - '@pnpm/exe.android-x64@12.9.1'
   - '@pnpm/exe.darwin-arm64@12.9.1'
