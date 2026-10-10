@@ -11,5 +11,9 @@
   "homepage": "https://reviews.hugodias.me",
   "repository": "https://github.com/hugomrdias/reviews",
   "license": "MIT",
-  "keywords": ["github", "comments", "code-review"]
+  "keywords": [
+    "github",
+    "comments",
+    "code-review"
+  ]
 }

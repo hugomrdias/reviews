@@ -15,6 +15,7 @@ const claudeMcp = read('plugins/reviews/.mcp.json')
 const marketplace = read('.agents/plugins/marketplace.json')
 const claudeMarketplace = read('.claude-plugin/marketplace.json')
 const openai = plugin.extensions['com.openai'].interface
+const releases = read('.github/.release-please-manifest.json')
 
 describe('the Reviews plugin manifests', () => {
   it('share their metadata', () => {
@@ -23,6 +24,11 @@ describe('the Reviews plugin manifests', () => {
     }
     expect(claudePlugin.displayName).toBe(openai.displayName)
     expect(claudePlugin.icon).toBe(openai.logo)
+  })
+
+  it('carry the version release-please last released', () => {
+    expect(plugin.version).toBe(releases['plugins/reviews'])
+    expect(read('package.json').version).toBe(releases['.'])
   })
 
   it('connect to the same server', () => {
