@@ -1,9 +1,6 @@
 # Reviews for Github
 
-The plugin connects an agent to Reviews and supplies two shared skills:
-
-- `check-comments` reads and summarizes threads without making changes.
-- `address-comments` works through requested feedback and marks committed fixes addressed for a person to confirm.
+The plugin connects an agent to Reviews and supplies one shared skill, `review-comments`. Asked to check or summarize comments, it reads threads without making changes. Asked to address them, it works through the requested feedback and marks committed fixes addressed for a person to confirm.
 
 The same folder supports OpenAI's portable Agent Plugins format (`plugin.json` and `mcp.json`) and Claude Code's format (`.claude-plugin/plugin.json` and `.mcp.json`). Both clients read the same `skills/` directory. The server is the existing production endpoint; installing this plugin does not start a local copy of Reviews.
 
@@ -51,7 +48,7 @@ codex plugin marketplace add .
 codex plugin list --marketplace reviews --available --json
 ```
 
-To install from the CLI, run `codex plugin add reviews@reviews`, then authenticate with `codex mcp login reviews`. In the desktop app, open Plugins and select the **Reviews for Github** local marketplace. Install **Reviews for Github** and authenticate when prompted. Restart the app after changing the package. Invoke `$check-comments` or `$address-comments`, or ask to check or address Reviews comments.
+To install from the CLI, run `codex plugin add reviews@reviews`, then authenticate with `codex mcp login reviews`. In the desktop app, open Plugins and select the **Reviews for Github** local marketplace. Install **Reviews for Github** and authenticate when prompted. Restart the app after changing the package. Invoke `$review-comments`, or ask to check or address Reviews comments.
 
 Keep one connection per client. If you previously configured a standalone `reviews` server, remove it with `codex mcp remove reviews` before using the plugin's connection.
 
@@ -66,7 +63,7 @@ claude plugin marketplace add .
 claude plugin install reviews@reviews
 ```
 
-Authenticate the plugin's Reviews server through `/mcp`. Invoke `/reviews:check-comments` or `/reviews:address-comments`. For development without installing, launch `claude --plugin-dir ./plugins/reviews`.
+Authenticate the plugin's Reviews server through `/mcp`. Invoke `/reviews:review-comments`, or ask to check or address Reviews comments. For development without installing, launch `claude --plugin-dir ./plugins/reviews`.
 
 If a standalone `reviews` server is already configured, remove that connection through `/mcp` before using the plugin's server.
 
@@ -87,4 +84,4 @@ After connecting, try each scenario in a disposable repository that the Reviews 
 3. Ask to address a comment requesting a small edit. Confirm the edit and relevant checks, then a reply and addressed status only after the fix is committed. A person confirms or reopens it.
 4. Ask to address a question that needs a decision. Confirm it stays open with a question or blocker.
 
-These four scenarios passed on 2026-10-04 in the Claude Code CLI (2.1.289) and the Codex CLI (0.160.0), both installed from the local marketplaces. The desktop apps and web clients are not verified yet; check them before publishing. Run the scenarios again after changing the skills or the server's instructions. Installing the plugin does not submit it to either public directory.
+These four scenarios passed on 2026-10-04, before the two skills merged into `review-comments`, in the Claude Code CLI (2.1.289) and the Codex CLI (0.160.0), both installed from the local marketplaces. The desktop apps and web clients are not verified yet; check them before publishing. Run the scenarios again after changing the skills or the server's instructions. Installing the plugin does not submit it to either public directory.

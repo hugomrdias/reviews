@@ -56,8 +56,8 @@ describe('the Reviews plugin manifests', () => {
   })
 })
 
-// `npx skills add` copies only a skill's own directory, so each skill keeps its
-// own copy of the connection setup instead of linking up into the plugin.
+// `npx skills add` copies only a skill's own directory, so a skill must not
+// link up into the plugin.
 describe('the Reviews plugin skills', () => {
   it.each(skills)('%s links only to files inside its own directory', (skill) => {
     const dir = `${repo}/plugins/reviews/skills/${skill}`
@@ -69,10 +69,5 @@ describe('the Reviews plugin skills', () => {
       expect(relative(dir, target).startsWith('..'), link).toBe(false)
       expect(existsSync(target), link).toBe(true)
     }
-  })
-
-  it('keep their connection setup copies equal', () => {
-    const [first, ...rest] = skills.map((skill) => readFileSync(`${repo}/plugins/reviews/skills/${skill}/references/connection.md`, 'utf8'))
-    for (const copy of rest) expect(copy).toBe(first)
   })
 })
