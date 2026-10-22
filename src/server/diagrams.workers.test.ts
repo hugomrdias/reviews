@@ -19,3 +19,12 @@ describe('renderDiagrams', () => {
     expect('svg' in diagram && diagram.svg).not.toContain('<img')
   })
 })
+
+describe('renderDiagrams budget', () => {
+  it('stops drawing past the per-file limit and keeps the rest as source', () => {
+    const fences = Array.from({ length: 31 }, (_, i) => `\`\`\`mermaid\nflowchart LR\n  a${i} --> b${i}\n\`\`\``)
+    const diagrams = renderDiagrams(fences.join('\n\n'), 'README.md')
+    expect(diagrams.slice(0, 30).every((d) => 'svg' in d)).toBe(true)
+    expect(diagrams[30]).toMatchObject({ error: expect.stringContaining('more diagrams') })
+  })
+})
