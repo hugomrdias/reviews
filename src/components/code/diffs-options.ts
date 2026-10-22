@@ -1,3 +1,4 @@
+import { canUseWASM } from '@pierre/diffs'
 import { bundledLanguages } from 'shiki/langs'
 import { useMemo } from 'react'
 import { useTheme } from '@/lib/theme'
@@ -9,8 +10,9 @@ import { useTheme } from '@/lib/theme'
  *
  * Highlights is Diffs' Wasm highlighter: every lexer is in one module, so
  * there's no grammar to fetch per language. Languages it lacks render as
- * plain text. Diffs runs one highlighter type at a time, so every view must
- * use these options.
+ * plain text. It needs WebAssembly with SIMD, so browsers without it (Safari
+ * before 16.4) or that block Wasm fall back to Shiki. Diffs runs one
+ * highlighter type at a time, so every view must use these options.
  */
 export function useDiffsTheme() {
   const { theme } = useTheme()
@@ -18,7 +20,7 @@ export function useDiffsTheme() {
     () => ({
       theme: { dark: 'pierre-dark', light: 'pierre-light' } as const,
       themeType: theme,
-      preferredHighlighter: 'highlights' as const,
+      preferredHighlighter: canUseWASM() ? ('highlights' as const) : ('shiki-js' as const),
     }),
     [theme],
   )
