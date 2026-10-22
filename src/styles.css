@@ -83,6 +83,13 @@
   --marker-strong: rgb(255 196 61 / 0.45);
   --marker-edited: #e9a23b;
   --danger: #ef6b62;
+
+  /* Light enough for dark labels, as diagram slices draw them in the page color. */
+  --chart-1: #8fa8f0;
+  --chart-2: #e9a23b;
+  --chart-3: #98a1b2;
+  --chart-4: #6cc49b;
+  --chart-5: #ef6b62;
 }
 
 @theme inline {
@@ -375,8 +382,18 @@
   --ondine-bg: var(--card);
   --ondine-fg: var(--foreground);
   --ondine-muted: var(--muted-foreground);
+  /* Edges sit a step behind the boxes they connect. */
+  --ondine-line: var(--muted-foreground);
+  --ondine-surface-alt: var(--wash);
+  --ondine-accent: var(--link);
+  --ondine-critical: var(--danger);
+  --ondine-series-1: var(--chart-1);
+  --ondine-series-2: var(--chart-2);
+  --ondine-series-3: var(--chart-3);
+  --ondine-series-4: var(--chart-4);
+  --ondine-series-5: var(--chart-5);
   --ondine-stroke: 1.5px;
-  --ondine-radius: 4px;
+  --ondine-radius: calc(var(--radius) - 4px);
 }
 
 /* Code surfaces sit on the page's own surface color in both themes. */
