@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/hugomrdias/reviews/compare/reviews-v0.1.2...reviews-v0.2.0) (2026-10-22)
+
+
+### Features
+
+* **code:** highlight with Diffs' Highlights instead of Shiki ([#66](https://github.com/hugomrdias/reviews/issues/66)) ([b48aaef](https://github.com/hugomrdias/reviews/commit/b48aaefa112668e1139fd545cc9c89a8b12c7b95))
+* render mermaid diagrams on the server with Ondine ([#65](https://github.com/hugomrdias/reviews/issues/65)) ([019a986](https://github.com/hugomrdias/reviews/commit/019a9865b2e4c31802c6a45d8a01cfcd4b4cdb69))
+
 ## [0.1.2](https://github.com/hugomrdias/reviews/compare/reviews-v0.1.1...reviews-v0.1.2) (2026-10-10)
 
 
