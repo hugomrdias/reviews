@@ -4,3 +4,6 @@ const render = () => null
 export const File = render
 export const MultiFileDiff = render
 export const bundledLanguages = {}
+export const canUseWASM = () => false
+export const getHighlighterOptions = () => ({})
+export const preloadHighlighter = async () => {}
