@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
+import type { Diagram } from '@/lib/markdown/diagrams'
 import { ThemeProvider } from '@/lib/theme'
 import { MarkdownView, type RepoContext } from './MarkdownView'
 
@@ -20,10 +21,10 @@ const ctx: RepoContext = {
   pathSet: new Set(paths),
 }
 
-function render(source: string) {
+function render(source: string, diagrams?: Diagram[]) {
   return renderToStaticMarkup(
     <ThemeProvider initial="light">
-      <MarkdownView source={source} ctx={ctx} />
+      <MarkdownView source={source} ctx={ctx} diagrams={diagrams} />
     </ThemeProvider>,
   )
 }
@@ -75,7 +76,24 @@ describe('MarkdownView output', () => {
     expect(html).toContain('data-eline="5"')
   })
 
-  it('renders mermaid fences as their source on the server', () => {
+  it('draws mermaid fences with the diagram the server drew for their source', () => {
+    const source = 'flowchart LR\n  a --> b'
+    const html = render(`\`\`\`mermaid\n${source}\n\`\`\``, [
+      { source, svg: '<svg class="ondine"></svg>', id: 'mermaid-0-' },
+    ])
+    expect(html).toContain('data-anchor-skip')
+    expect(html).toContain('<svg class="ondine">')
+    expect(html).not.toContain('a --&gt; b')
+  })
+
+  it('shows the source and the error of a diagram that failed', () => {
+    const source = 'flowchart LR\n  a -->'
+    const html = render(`\`\`\`mermaid\n${source}\n\`\`\``, [{ source, error: 'Parse error on line 2' }])
+    expect(html).toContain('Unable to render Mermaid diagram: Parse error on line 2')
+    expect(html).toContain('a --&gt;')
+  })
+
+  it('shows the source of a mermaid fence the server did not draw', () => {
     const html = render('```mermaid\nflowchart LR\n  a --> b\n```')
     expect(html).toContain('data-anchor-skip')
     expect(html).toContain('a --&gt; b')

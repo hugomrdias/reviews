@@ -319,6 +319,7 @@ function RepoViewer({ viewer, repoSummary, refName, sha, path, search, preloaded
     body = (
       <DocumentComments
         source={text.text}
+        diagrams={text.diagrams}
         ctx={ctx}
         location={threadLocation}
         index={index}

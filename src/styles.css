@@ -357,13 +357,26 @@
     overflow-x: auto;
     white-space: pre;
   }
-  /* Mermaid measures labels outside .doc; breaking anywhere would wrap them mid-word. */
+  /* Ondine sizes labels on the server; breaking anywhere would wrap them mid-word. */
   .doc .mermaid-diagram {
     overflow-wrap: normal;
   }
   .doc [data-anchor-skip] {
     margin-block: 0 1.1em;
   }
+}
+
+/*
+ * Ondine diagrams read their colors from these, so they follow the theme
+ * without being drawn again. The font stays Ondine's default monospace stack:
+ * it sizes labels at 0.6em a character, and wider fonts overflow their shapes.
+ */
+.mermaid-diagram .ondine {
+  --ondine-bg: var(--card);
+  --ondine-fg: var(--foreground);
+  --ondine-muted: var(--muted-foreground);
+  --ondine-stroke: 1.5px;
+  --ondine-radius: 4px;
 }
 
 /* Code surfaces sit on the page's own surface color in both themes. */

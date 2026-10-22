@@ -28,6 +28,8 @@ export default defineConfig(async () => {
                 // Keep in sync with wrangler.jsonc.
                 compatibilityDate: '2026-09-28',
                 compatibilityFlags: ['nodejs_compat'],
+                // Loads `.wasm?module` imports as compiled modules, as the Worker build does.
+                modulesRules: [{ type: 'CompiledWasm', include: ['**/*.wasm?module'] }],
                 d1Databases: ['DB'],
                 kvNamespaces: ['OAUTH_KV'],
                 bindings: { APP_URL: 'http://localhost:3000', SESSION_SECRET: 'test-session-secret', TEST_MIGRATIONS: migrations },
