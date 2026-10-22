@@ -1,76 +1,31 @@
-import { memo, useEffect, useId, useState } from 'react'
+import { memo } from 'react'
 import { PlainCode } from '@/components/code/CodeBlock'
 import { DiagramZoom } from '@/components/markdown/DiagramZoom'
-import { useTheme } from '@/lib/theme'
-
-type Mermaid = typeof import('mermaid').default
-
-let mermaidPromise: Promise<Mermaid> | undefined
-
-/** Mermaid is large, so it loads on the first diagram, in the browser only. */
-function loadMermaid() {
-  mermaidPromise ??= import('mermaid').then((m) => m.default)
-  return mermaidPromise
-}
-
-// The theme Mermaid was last set up for; a page of diagrams sets it up once.
-let initializedFor: boolean | undefined
-
-async function renderDiagram(id: string, source: string, dark: boolean) {
-  const [mermaid] = await Promise.all([loadMermaid(), document.fonts.ready])
-  if (initializedFor !== dark) setUp(mermaid, dark)
-  const { svg } = await mermaid.render(id, source)
-  return svg
-}
-
-function setUp(mermaid: Mermaid, dark: boolean) {
-  initializedFor = dark
-  mermaid.initialize({
-    startOnLoad: false,
-    // Diagrams come from arbitrary repos: labels are sanitized and
-    // click handlers are off. Diagrams can't loosen this with %%{init}%%.
-    securityLevel: 'strict',
-    suppressErrorRendering: true,
-    theme: dark ? 'dark' : 'neutral',
-    fontFamily: getComputedStyle(document.documentElement).getPropertyValue('--font-sans'),
-  })
-}
-
-type State = { status: 'pending' } | { status: 'done'; svg: string } | { status: 'error'; message: string }
+import type { Diagram } from '@/lib/markdown/diagrams'
 
 /**
- * A ```mermaid fence, drawn as a diagram the way GitHub does. The server and
- * the first client render show the source; the diagram replaces it once
- * Mermaid loads. Invalid diagrams keep the source and show the parse error.
+ * A ```mermaid fence, drawn on the server by Ondine (server/diagrams.ts), so
+ * the page arrives with it. Colors follow the theme through `--ondine-*`
+ * properties. Invalid diagrams keep the source and show the parse error, and a
+ * fence the server didn't draw shows its source.
  */
-export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source: string }) {
-  const { resolvedTheme } = useTheme()
-  // Mermaid uses the id in CSS selectors, so it must be selector-safe.
-  const id = `mermaid-${useId().replace(/[^\w-]/g, '')}`
-  const [state, setState] = useState<State>({ status: 'pending' })
-
-  useEffect(() => {
-    let cancelled = false
-    renderDiagram(id, source, resolvedTheme === 'dark').then(
-      (svg) => !cancelled && setState({ status: 'done', svg }),
-      (error: unknown) =>
-        !cancelled && setState({ status: 'error', message: error instanceof Error ? error.message : String(error) }),
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [id, source, resolvedTheme])
-
-  if (state.status === 'done') {
+export const MermaidDiagram = memo(function MermaidDiagram({
+  source,
+  diagram,
+}: {
+  source: string
+  diagram: Diagram | undefined
+}) {
+  if (diagram && 'svg' in diagram) {
     return (
       <div data-anchor-skip>
-        <DiagramZoom id={id} svg={state.svg}>
+        <DiagramZoom id={diagram.id} svg={diagram.svg}>
           <div
             role="img"
             aria-label="Mermaid diagram"
             className="mermaid-diagram overflow-x-auto rounded-lg border bg-card p-4"
-            // Mermaid's own output under securityLevel 'strict' (DOMPurify-sanitized).
-            dangerouslySetInnerHTML={{ __html: state.svg }}
+            // Ondine's output: authored strings are escaped, and it has no scripts or event handlers.
+            dangerouslySetInnerHTML={{ __html: diagram.svg }}
           />
         </DiagramZoom>
       </div>
@@ -78,9 +33,9 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
   }
   return (
     <div data-anchor-skip className="overflow-hidden rounded-lg border bg-card">
-      {state.status === 'error' && (
-        <p className="border-b px-4 py-2 font-sans text-sm text-destructive">
-          Unable to render Mermaid diagram: {state.message}
+      {diagram && 'error' in diagram && (
+        <p className="border-b px-4 py-2 font-sans text-sm whitespace-pre-wrap text-destructive">
+          Unable to render Mermaid diagram: {diagram.error}
         </p>
       )}
       <PlainCode code={source} />

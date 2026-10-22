@@ -3,6 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { Button } from '@/components/ui/button'
 import { MarkdownView, type RepoContext } from '@/components/markdown/MarkdownView'
 import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
+import type { Diagram } from '@/lib/markdown/diagrams'
 import type { ThreadMutations } from '@/hooks/useThreadMutations'
 import { useTextHighlights } from '@/hooks/useTextHighlights'
 import { quoteSourceLines, textAnchor } from '@/lib/anchoring/draft'
@@ -67,6 +68,7 @@ function caretOffset(index: TextIndex, x: number, y: number) {
 interface DocumentCommentsProps {
   source: string
   ctx: RepoContext
+  diagrams?: readonly Diagram[]
   location: ThreadLocation
   index: TextIndex | null
   onIndex: (index: TextIndex) => void
@@ -89,6 +91,7 @@ interface DocumentCommentsProps {
 export function DocumentComments({
   source,
   ctx,
+  diagrams,
   location,
   index,
   onIndex,
@@ -287,7 +290,7 @@ export function DocumentComments({
   return (
     <div ref={rootRef} className="relative flex gap-10 xl:gap-14">
       <div ref={docRef} className="doc min-w-0 flex-1" onClick={onDocClick}>
-        <MarkdownView source={source} ctx={ctx} />
+        <MarkdownView source={source} ctx={ctx} diagrams={diagrams} />
       </div>
 
       {showMargin && (
