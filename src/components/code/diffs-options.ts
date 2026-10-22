@@ -3,9 +3,14 @@ import { useMemo } from 'react'
 import { useTheme } from '@/lib/theme'
 
 /**
- * Theme options for @pierre/diffs. "system" follows the OS on both sides
- * (Diffs via color-scheme, the app via the theme script); explicit choices
- * are passed through so Diffs follows the app, not the OS.
+ * Theme and highlighter options for @pierre/diffs. "system" follows the OS on
+ * both sides (Diffs via color-scheme, the app via the theme script); explicit
+ * choices are passed through so Diffs follows the app, not the OS.
+ *
+ * Highlights is Diffs' Wasm highlighter: every lexer is in one module, so
+ * there's no grammar to fetch per language. Languages it lacks render as
+ * plain text. Diffs runs one highlighter type at a time, so every view must
+ * use these options.
  */
 export function useDiffsTheme() {
   const { theme } = useTheme()
@@ -13,7 +18,7 @@ export function useDiffsTheme() {
     () => ({
       theme: { dark: 'pierre-dark', light: 'pierre-light' } as const,
       themeType: theme,
-      preferredHighlighter: 'shiki-js' as const,
+      preferredHighlighter: 'highlights' as const,
     }),
     [theme],
   )
