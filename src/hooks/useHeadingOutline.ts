@@ -27,16 +27,21 @@ export function useHeadingOutline(ref: RefObject<HTMLElement | null>, source: st
     )
 
     const update = () => {
+      // Skip headings in a closed <details>: depending on the browser their rect
+      // reads as top 0 or as the details' own spot, so either would claim the section.
+      const shown = headings.flatMap((h, i) =>
+        h.checkVisibility() ? [{ id: ids[i], top: h.getBoundingClientRect().top }] : [],
+      )
       const page = document.scrollingElement
       const atEnd = page !== null && page.scrollTop > 0 && page.scrollTop + window.innerHeight >= page.scrollHeight - 2
       let current = 0
-      if (atEnd) current = headings.length - 1
+      if (atEnd) current = shown.length - 1
       else {
-        headings.forEach((h, i) => {
-          if (h.getBoundingClientRect().top <= READING_LINE) current = i
+        shown.forEach((h, i) => {
+          if (h.top <= READING_LINE) current = i
         })
       }
-      setActiveId(ids[current] ?? null)
+      setActiveId(shown[current]?.id ?? null)
     }
     let frame = 0
     const schedule = () => {
@@ -47,10 +52,13 @@ export function useHeadingOutline(ref: RefObject<HTMLElement | null>, source: st
     // Capture, so scrolling in an inner container counts too.
     window.addEventListener('scroll', schedule, { capture: true, passive: true })
     window.addEventListener('resize', schedule)
+    // Opening or closing a <details> shows or hides its headings. toggle doesn't bubble.
+    root.addEventListener('toggle', schedule, { capture: true })
     return () => {
       cancelAnimationFrame(frame)
       window.removeEventListener('scroll', schedule, { capture: true })
       window.removeEventListener('resize', schedule)
+      root.removeEventListener('toggle', schedule, { capture: true })
     }
   }, [ref, source])
 
