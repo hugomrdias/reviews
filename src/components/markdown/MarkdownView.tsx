@@ -1,11 +1,12 @@
 import { Link } from '@tanstack/react-router'
-import type { Element, ElementContent } from 'hast'
+import type { Element } from 'hast'
 import { AlertTriangle, Info, Lightbulb, MessageSquareWarning, OctagonAlert } from 'lucide-react'
 import { memo, useMemo, type ComponentProps, type ReactNode } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import { CodeBlock } from '@/components/code/CodeBlock'
 import { MermaidDiagram } from '@/components/markdown/MermaidDiagram'
 import { resolveAssetPath, resolveRepoLink, toSplat } from '@/lib/links'
+import { codeFence, isMermaid, type Diagram } from '@/lib/markdown/diagrams'
 import { markdownPipeline } from '@/lib/markdown/pipeline'
 import { ALERT_LABELS, type AlertType } from '@/lib/markdown/plugins'
 import { encodePath } from '@/lib/paths'
@@ -98,28 +99,25 @@ function MdSource({ ctx, srcSet, node: _node, ...rest }: ComponentProps<'source'
   return <source {...rest} srcSet={rewritten} />
 }
 
-function textOf(node: ElementContent): string {
-  if (node.type === 'text') return node.value
-  if (node.type === 'element') return node.children.map(textOf).join('')
-  return ''
-}
-
-function MdPre({ node, children }: ComponentProps<'pre'> & { node?: Element }) {
-  const code = node?.children.find((c): c is Element => c.type === 'element' && c.tagName === 'code')
-  if (!code) return <pre>{children}</pre>
-  const className = code.properties.className
-  const lang = (Array.isArray(className) ? className : [])
-    .map(String)
-    .find((c) => c.startsWith('language-'))
-    ?.slice('language-'.length)
-  const source = textOf(code).replace(/\n$/, '')
+function MdPre({
+  node,
+  children,
+  diagrams,
+}: ComponentProps<'pre'> & { node?: Element; diagrams: ReadonlyMap<string, Diagram> }) {
+  const fence = node ? codeFence(node) : null
+  if (!fence) return <pre>{children}</pre>
+  const { lang, source } = fence
   // Keep the pre's source lines so line comments on a fence find their block.
   return (
     <div
       data-sline={node?.properties.dataSline as number | undefined}
       data-eline={node?.properties.dataEline as number | undefined}
     >
-      {lang?.toLowerCase() === 'mermaid' ? <MermaidDiagram source={source} /> : <CodeBlock code={source} lang={lang} />}
+      {isMermaid(lang) ? (
+        <MermaidDiagram source={source} diagram={diagrams.get(source)} />
+      ) : (
+        <CodeBlock code={source} lang={lang} />
+      )}
     </div>
   )
 }
@@ -161,6 +159,8 @@ function MdBlockquote({ node, children, ...rest }: ComponentProps<'blockquote'> 
   )
 }
 
+const NO_DIAGRAMS: readonly Diagram[] = []
+
 /**
  * Renders repo markdown the way GitHub does: GFM, alerts, sanitized raw
  * HTML, "user-content-" heading ids. Relative links stay in the app and
@@ -169,21 +169,24 @@ function MdBlockquote({ node, children, ...rest }: ComponentProps<'blockquote'> 
 export const MarkdownView = memo(function MarkdownView({
   source,
   ctx,
+  diagrams = NO_DIAGRAMS,
 }: {
   source: string
   ctx: RepoContext
+  /** The file's ```mermaid fences, drawn by the server. */
+  diagrams?: readonly Diagram[]
 }) {
-  const components = useMemo<Components>(
-    () => ({
+  const components = useMemo<Components>(() => {
+    const bySource = new Map(diagrams.map((d) => [d.source, d]))
+    return {
       a: (props) => <MdLink {...props} ctx={ctx} />,
       img: (props) => <MdImage {...props} ctx={ctx} />,
       source: (props) => <MdSource {...props} ctx={ctx} />,
-      pre: MdPre,
+      pre: (props) => <MdPre {...props} diagrams={bySource} />,
       blockquote: MdBlockquote,
       table: MdTable,
-    }),
-    [ctx],
-  )
+    }
+  }, [ctx, diagrams])
   const pipeline = markdownPipeline(ctx.path)
   return (
     <ReactMarkdown

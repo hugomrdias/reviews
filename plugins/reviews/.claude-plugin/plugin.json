@@ -1,8 +1,7 @@
 {
   "name": "reviews",
   "displayName": "Reviews for Github",
-  "icon": "./assets/logo.png",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Reviews for Github connects agents to repository comments and requested changes.",
   "author": {
     "name": "Hugo Dias",
@@ -11,5 +10,9 @@
   "homepage": "https://reviews.hugodias.me",
   "repository": "https://github.com/hugomrdias/reviews",
   "license": "MIT",
-  "keywords": ["github", "comments", "code-review"]
+  "keywords": [
+    "github",
+    "comments",
+    "code-review"
+  ]
 }

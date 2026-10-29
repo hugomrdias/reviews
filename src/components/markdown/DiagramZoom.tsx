@@ -68,7 +68,8 @@ function DiagramViewer({ svg }: { svg: string }) {
     const el = svgEl()
     if (!el) return
     const { width, height } = el.viewBox.baseVal
-    el.removeAttribute('style')
+    // The SVG's style also carries its theme, so only lift the size limit.
+    el.style.maxWidth = 'none'
     el.setAttribute('width', String(width))
     el.setAttribute('height', String(height))
     fit()
@@ -173,7 +174,7 @@ function DiagramViewer({ svg }: { svg: string }) {
             transform: view ? `translate(${view.x}px, ${view.y}px) scale(${view.scale})` : undefined,
             visibility: view ? 'visible' : 'hidden',
           }}
-          // Mermaid's own output under securityLevel 'strict' (DOMPurify-sanitized).
+          // Ondine's output: authored strings are escaped, and it has no scripts or event handlers.
           dangerouslySetInnerHTML={{ __html: svg }}
         />
       </div>
@@ -183,8 +184,8 @@ function DiagramViewer({ svg }: { svg: string }) {
 
 /**
  * A rendered diagram with an expand button that opens it in a zoomable,
- * full-screen viewer. `id` is the diagram's Mermaid id; the viewer's copy
- * gets its own so the two SVGs don't share element ids.
+ * full-screen viewer. `id` is the diagram's element id prefix; the viewer's
+ * copy gets its own so the two SVGs don't share element ids.
  */
 export function DiagramZoom({ id, svg, children }: { id: string; svg: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)

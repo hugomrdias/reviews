@@ -9,7 +9,10 @@
       "name": "reviews",
       "displayName": "Reviews for Github",
       "source": "./plugins/reviews",
-      "description": "Reviews for Github connects agents to repository comments and requested changes."
+      "description": "Reviews for Github connects agents to repository comments and requested changes.",
+      "skills": [
+        "./skills/review-comments"
+      ]
     }
   ]
 }

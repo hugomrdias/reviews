@@ -4,7 +4,6 @@ allowBuilds:
   sharp: true
   workerd: true
 minimumReleaseAgeExclude:
-  - '@tanstack/intent@0.5.3'
   - '@pnpm/exe.android-arm64@12.9.1'
   - '@pnpm/exe.android-x64@12.9.1'
   - '@pnpm/exe.darwin-arm64@12.9.1'
@@ -20,3 +19,5 @@ minimumReleaseAgeExclude:
   - '@pnpm/exe.win32-arm64@12.9.1'
   - '@pnpm/exe.win32-x64@12.9.1'
   - pnpm@12.9.1
+  - '@pierre/diffs@1.6.1'
+  - '@pierre/theming@1.0.2'

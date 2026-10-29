@@ -21,8 +21,9 @@ interface RouterContext {
 const DESCRIPTION = 'Read and comment on the docs in your GitHub repos.'
 
 // The --paper color of each theme, for the browser's toolbar and the installed app's status bar.
-// site.webmanifest has no theme_color on purpose: Chrome paints an installed app's navigation
-// bar with it, and it has no dark variant. Without it, the bar follows the phone's theme.
+// site.webmanifest uses the dark one for theme_color and background_color: Chrome paints an
+// installed app's navigation bar, and the window behind it, from those, and a manifest has no
+// dark variant. Light was white under the dark theme; dark is a dark bar under the light one.
 const THEME_COLORS = { light: '#f6f7f9', dark: '#161b24' }
 
 export const Route = createRootRouteWithContext<RouterContext>()({

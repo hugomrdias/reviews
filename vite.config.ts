@@ -6,20 +6,18 @@ import tailwindcss from '@tailwindcss/vite'
 import { cloudflare } from '@cloudflare/vite-plugin'
 
 const diffsStub = fileURLToPath(new URL('./src/stubs/diffs-ssr-stub.tsx', import.meta.url))
-const mermaidStub = fileURLToPath(new URL('./src/stubs/mermaid-ssr-stub.ts', import.meta.url))
 
 const ssrStubs: Record<string, string> = {
   '@pierre/diffs/react': diffsStub,
   '@pierre/diffs': diffsStub,
   shiki: diffsStub,
   'shiki/langs': diffsStub,
-  mermaid: mermaidStub,
 }
 
 /**
- * Code highlighting (@pierre/diffs + Shiki) and Mermaid diagrams only render
- * in the browser, so the server gets stubs instead. This keeps Shiki's
- * grammars and Mermaid out of the Worker bundle.
+ * Code highlighting (@pierre/diffs + Shiki) only renders in the browser, so
+ * the server gets stubs instead. This keeps Shiki's grammars out of the
+ * Worker bundle.
  */
 function clientOnly(): Plugin {
   return {
@@ -83,13 +81,21 @@ const sharedDeps = [
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   optimizeDeps: {
-    // Highlighting and Mermaid are stubbed out of the Worker, so only the browser bundles them.
-    include: [...sharedDeps, '@pierre/diffs', '@pierre/diffs/react', 'shiki', 'shiki/langs', 'mermaid', 'react-dom/client'],
+    // Highlighting is stubbed out of the Worker, so only the browser bundles it.
+    include: [...sharedDeps, '@pierre/diffs', '@pierre/diffs/react', 'shiki', 'shiki/langs', 'react-dom/client'],
   },
   environments: {
     ssr: {
       optimizeDeps: {
-        include: [...sharedDeps, 'react-dom/server', 'drizzle-orm', 'drizzle-orm/d1', 'drizzle-orm/sqlite-core'],
+        include: [
+          ...sharedDeps,
+          'react-dom/server',
+          'drizzle-orm',
+          'drizzle-orm/d1',
+          'drizzle-orm/sqlite-core',
+          // Mermaid diagrams render in the Worker (src/server/diagrams.ts).
+          'ondine/compiler/wasm',
+        ],
       },
     },
   },

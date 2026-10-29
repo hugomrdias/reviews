@@ -5,6 +5,7 @@ import { TocMinimap } from '@/components/ui/toc-minimap'
 import { MarkdownView, scrollToHash, type RepoContext } from '@/components/markdown/MarkdownView'
 import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
 import { useHeadingOutline } from '@/hooks/useHeadingOutline'
+import type { Diagram } from '@/lib/markdown/diagrams'
 import type { ThreadMutations } from '@/hooks/useThreadMutations'
 import { useTextHighlights } from '@/hooks/useTextHighlights'
 import { quoteSourceLines, textAnchor } from '@/lib/anchoring/draft'
@@ -69,6 +70,7 @@ function caretOffset(index: TextIndex, x: number, y: number) {
 interface DocumentCommentsProps {
   source: string
   ctx: RepoContext
+  diagrams?: readonly Diagram[]
   location: ThreadLocation
   index: TextIndex | null
   onIndex: (index: TextIndex) => void
@@ -91,6 +93,7 @@ interface DocumentCommentsProps {
 export function DocumentComments({
   source,
   ctx,
+  diagrams,
   location,
   index,
   onIndex,
@@ -305,7 +308,7 @@ export function DocumentComments({
         </div>
       )}
       <div ref={docRef} className="doc min-w-0 flex-1" onClick={onDocClick}>
-        <MarkdownView source={source} ctx={ctx} />
+        <MarkdownView source={source} ctx={ctx} diagrams={diagrams} />
       </div>
 
       {showMargin && (

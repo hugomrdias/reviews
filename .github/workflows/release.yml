@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      # Opens or updates the release pull request, and tags and creates the
+      # GitHub releases when that pull request merges. Pull requests opened
+      # with GITHUB_TOKEN do not trigger CI, so RELEASE_PLEASE_TOKEN can hold a
+      # token that does.
+      - name: Run release-please
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json

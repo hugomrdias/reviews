@@ -1,5 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
+import type { Diagram } from '@/lib/markdown/diagrams'
+import { isMarkdown } from '@/lib/paths'
 import type { CommentPermissions } from '@/lib/threads'
 import { diagnoseNoAccess, listAllRepos, requireRepoAccess, type NoAccess } from '@/server/github/access'
 import { NotFoundError, RateLimitError } from '@/server/github/client'
@@ -13,6 +15,7 @@ import {
 } from '@/server/github/content'
 import { resolveLocation as resolve, type Location } from '@/server/github/refs'
 import { repoActivity } from '@/server/comments/store'
+import { renderDiagrams } from '@/server/diagrams'
 import { getDb } from '@/server/db/client'
 import { authMiddleware, repoMiddleware } from '@/server/middleware'
 import { fileInput, pathSchema, repoInput, shaSchema } from './schemas'
@@ -83,7 +86,14 @@ export const fetchTree = createServerFn({ method: 'GET' })
     return { paths: tree.entries.map((e) => e.path), truncated: tree.truncated }
   })
 
-export type FileResult = FileContent | { kind: 'directory'; path: string } | { kind: 'missing'; path: string }
+/** A text file, with the diagrams of a markdown file drawn. */
+export type TextFile = Extract<FileContent, { kind: 'text' }> & { diagrams?: Diagram[] }
+
+export type FileResult =
+  | TextFile
+  | Exclude<FileContent, { kind: 'text' }>
+  | { kind: 'directory'; path: string }
+  | { kind: 'missing'; path: string }
 
 export const fetchFile = createServerFn({ method: 'GET' })
   .middleware([repoMiddleware])
@@ -92,7 +102,11 @@ export const fetchFile = createServerFn({ method: 'GET' })
     // Not from the tree: the page loads that alongside, and this doesn't wait for it.
     const found = await getPathEntry(session.accessToken, access.repoId, access.owner, access.name, data.sha, data.path)
     if (found.kind === 'file') {
-      return getFileContent(session.accessToken, access.repoId, access.owner, access.name, found.entry)
+      const content = await getFileContent(session.accessToken, access.repoId, access.owner, access.name, found.entry)
+      if (content.kind === 'text' && isMarkdown(content.path)) {
+        return { ...content, diagrams: renderDiagrams(content.text, content.path) }
+      }
+      return content
     }
     return { kind: found.kind, path: data.path }
   })
