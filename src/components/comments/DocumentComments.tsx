@@ -1,8 +1,10 @@
 import { MessageSquarePlus } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
-import { MarkdownView, type RepoContext } from '@/components/markdown/MarkdownView'
+import { TocMinimap } from '@/components/ui/toc-minimap'
+import { MarkdownView, scrollToHash, type RepoContext } from '@/components/markdown/MarkdownView'
 import type { AnchoredThread } from '@/hooks/useAnchoredThreads'
+import { useHeadingOutline } from '@/hooks/useHeadingOutline'
 import type { ThreadMutations } from '@/hooks/useThreadMutations'
 import { useTextHighlights } from '@/hooks/useTextHighlights'
 import { quoteSourceLines, textAnchor } from '@/lib/anchoring/draft'
@@ -120,6 +122,7 @@ export function DocumentComments({
     [draftStart, draftEnd],
   )
   useTextHighlights(index, anchored, activeId, draftOffsets)
+  const outline = useHeadingOutline(docRef, source)
 
   const onPage = anchored.filter((a) => a.thread.status !== 'resolved' && (a.text || a.lines))
 
@@ -286,6 +289,21 @@ export function DocumentComments({
 
   return (
     <div ref={rootRef} className="relative flex gap-10 xl:gap-14">
+      {/* The outline rides in the page's left padding, outside the indexed text. */}
+      {outline.items.length > 1 && (
+        <div className="absolute inset-y-0 hidden md:-left-8 md:block lg:-left-10">
+          <div className="sticky top-20">
+            <TocMinimap
+              items={outline.items}
+              activeId={outline.activeId}
+              onSelect={(id) => {
+                history.replaceState(null, '', `#${id}`)
+                scrollToHash(id)
+              }}
+            />
+          </div>
+        </div>
+      )}
       <div ref={docRef} className="doc min-w-0 flex-1" onClick={onDocClick}>
         <MarkdownView source={source} ctx={ctx} />
       </div>
